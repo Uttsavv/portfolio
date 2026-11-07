@@ -83,8 +83,8 @@ export async function start() {
     return root;
   }
 
-  /* ---------- floor: matte, so it never throws a blue glare under the text ---------- */
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 140), new THREE.MeshLambertMaterial({ color: 0x0b0f18 }));
+  /* ---------- floor: satin, so the sky-blue rim light pools softly under each scene (the scrim keeps it off the text) ---------- */
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 140), new THREE.MeshStandardMaterial({ color: 0x080b12, roughness: 0.78, metalness: 0, envMapIntensity: 0.45 }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.x = 50;
   floor.receiveShadow = true;
@@ -114,18 +114,31 @@ export async function start() {
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
     pops.push({ pivot, delay });
   });
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.0, 48, 24), new THREE.MeshStandardMaterial({ color: SKY, emissive: 0x1f6fb0, emissiveIntensity: 0.9, roughness: 0.85 }));
-  moon.position.set(3.4, 8.2, -10.5);
+  // the one glow: a bright sky-blue moon with a soft halo
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 48, 24), glowMat);
+  moon.position.set(3.2, 8.4, -9.5);
+  const haloTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    const r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    r.addColorStop(0, 'rgba(90,185,252,.55)'); r.addColorStop(0.35, 'rgba(90,185,252,.18)'); r.addColorStop(1, 'rgba(90,185,252,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 256, 256);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+  halo.scale.setScalar(7.5);
+  halo.position.copy(moon.position).add(new THREE.Vector3(0, 0, -0.5));
+  delhi.add(halo);
   const moonLight = new THREE.PointLight(SKY, 3, 12, 2);
   moonLight.position.copy(moon.position);
   delhi.add(moon, moonLight);
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
-    { p: [6, 4.6, 21], l: [0, 2.4, 0], off: 0.18 },
-    { p: [WX + 7.5, 6, 21.5], l: [WX, 2.2, 0], off: 0.24 },
-    { p: [PX + 3, 3.6, 12.5], l: [PX, 2.4, 0], off: 0.13 },
-    { p: [CX + 5, 5.4, 15], l: [CX, 2.4, 0], off: 0.26 },
+    { p: [3.6, 3.9, 13.8], l: [-0.5, 2.9, 0], off: 0.19 },
+    { p: [WX + 7.5, 5.6, 20.5], l: [WX + 0.6, 1.7, 0.3], off: 0.24 },
+    { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
+    { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
@@ -178,25 +191,23 @@ export async function start() {
     const work = new THREE.Group();
     work.position.x = WX;
     scene.add(work);
-    const slab = node(career, 'slab'), slabNow = node(career, 'slabNow');
+    const blockSrc = node(career, 'block'), blockNow = node(career, 'blockNow');
     const n = data.years.length;
     data.years.forEach((yr, i) => {
       const isNow = yr === 'Now';
-      const h = 1.6 + (n > 1 ? (3 * i) / (n - 1) : 0);
-      const count = Math.max(2, Math.round(h / 0.4));
+      const h = 1.5 + (n > 1 ? (1.7 * i) / (n - 1) : 0);
       const g = new THREE.Group();
       const span = Math.min(3.1, 9 / Math.max(1, n));
       g.position.set((i - (n - 1) / 2) * span, 0, 1.4 - i * (2.8 / Math.max(1, n - 1)));
-      for (let k = 0; k < count; k++) {
-        const s = (isNow ? slabNow : slab).clone();
-        s.position.set(0, k * 0.4, 0);
-        g.add(s);
-      }
+      // one smooth block whose rounded top sits at h; the rest of it waits below the floor
+      const b = (isNow ? blockNow : blockSrc).clone();
+      b.position.set(0, h, 0);
+      g.add(b);
       const lab = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.95), label(yr, !isNow));
-      lab.position.set(-0.05, count * 0.4 - 0.5, 1.165);
+      lab.position.set(-0.05, h - 0.55, 1.155);
       g.add(lab);
       work.add(g);
-      blocks.push({ g, h: count * 0.4, label: lab });
+      blocks.push({ g, h, label: lab });
     });
     document.fonts.ready.then(() => blocks.forEach((b, i) => {
       (b.label.material as THREE.MeshBasicMaterial).dispose();
@@ -316,7 +327,7 @@ export async function start() {
     if (phone) {
       // free band between the nav and the text; zoom out so the model fits inside it
       const band = Math.max(0.12, freeTop - 64 / H);
-      pull = Math.min(3, Math.max(1.35, 0.5 / band));
+      pull = Math.min(3, Math.max(1.6, 0.55 / band));
     } else {
       pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
     }
@@ -355,7 +366,7 @@ export async function start() {
       pivot.rotation.x = (1 - v) * -Math.PI / 2;
     }
     delhi.visible = tSmooth < 0.6;
-    moon.visible = !phone;
+    moon.visible = halo.visible = !phone;
 
     // experience: blocks rise out of the floor one after another
     const pw = tSmooth - 0.25;
