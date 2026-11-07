@@ -20,8 +20,8 @@
     "_comment": "Optional. A Formspree / Web3Forms style URL that accepts a JSON POST. Empty = the form opens the visitor's mail app addressed to `email`."
   },
   "seo": {
-    "title": "Utsav Singh · Full-stack engineer in Delhi",
-    "description": "Utsav Singh is a full-stack engineer in Delhi, India, with 2+ years of experience in TypeScript and Python."
+    "title": "Hi, I’m Utsav Singh",
+    "description": "Full-stack engineer with 2+ years of experience building web apps in TypeScript, Python and more. Have a look at my work or say hello."
   },
   "_placeholders": "email (.example stand-in), links.linkedin, public/resume.pdf (a stand-in with only name, role and GitHub)"
 }
