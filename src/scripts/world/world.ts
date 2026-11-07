@@ -6,7 +6,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { projectProgress, sceneT } from '../scroll';
 
-type WorldData = { models: string; years: string[]; projects: string[] };
+type WorldData = { models: string; v?: string; years: string[]; projects: string[] };
 
 const BG = 0x0a0d14;
 const SKY = 0x5ab9fc;
@@ -97,7 +97,7 @@ export async function start() {
 
   /* ---------- loading ---------- */
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const load = (name: string) => loader.loadAsync(data.models + name + '.glb').then((g: GLTF) => dress(g.scene));
+  const load = (name: string) => loader.loadAsync(data.models + name + '.glb' + (data.v ? '?v=' + data.v : '')).then((g: GLTF) => dress(g.scene));
   const node = (root: THREE.Object3D, name: string) => {
     const o = root.getObjectByName(name);
     if (!o) throw new Error('missing node ' + name);
@@ -335,7 +335,7 @@ export async function start() {
   addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - dragX;
-    const d = -dx * (5 / Math.max(360, innerWidth)); // a drag across the screen turns the scene well round; clamped to about ±63°
+    const d = dx * (5 / Math.max(360, innerWidth)); // grab-and-turn: drag right brings the left side round; a drag across the screen turns the scene well round; clamped to about ±63°
     yawUser = Math.max(-1.1, Math.min(1.1, yawUser + d));
     dragX = e.clientX;
   }, { passive: true });

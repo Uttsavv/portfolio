@@ -413,6 +413,8 @@ def humayun_tomb():
     n = 7
     for side in range(4):
         for k in range(n):
+            if k == n // 2:
+                continue  # the middle bay is the way in: a gateway and a flight of steps
             x = -PW / 2 + PW * (k + 0.5) / n
             niche = prism("ht_niche", arch_points(0.24, 0.2, 0.25, 8), -0.02, 0.02, dark)
             niche.location = (x, -PW / 2 - 0.005, 0.08)
@@ -420,6 +422,18 @@ def humayun_tomb():
             apply_transform(niche)
             niche.data.transform(Matrix.Rotation(side * math.pi / 2, 4, "Z"))
             parts.append(niche)
+    # the way in: a flight of steps up the front of the terrace, an arched gateway through the plinth on the other faces
+    for side in range(4):
+        if side == 0:
+            objs = [box("ht_step", (0.56, 0.12, PH * (i + 1) / 4), (0, -PW / 2 - 0.42 + 0.12 * i + 0.06, PH * (i + 1) / 8), clay2, 0.005) for i in range(4)]
+        else:
+            gate = prism("ht_gate", arch_points(0.3, 0.26, 0.25, 10), -0.03, 0.02, dark)
+            gate.location = (0, -PW / 2 - 0.005, 0.0)
+            apply_transform(gate)
+            objs = [gate]
+        for o in objs:
+            o.data.transform(Matrix.Rotation(side * math.pi / 2, 4, "Z"))
+        parts += objs
     # main block with chamfered corners
     B, BH = 1.9, 1.25
     blk = box("ht_block", (B, B, BH), (0, 0, PH + BH / 2), clay, 0.0)
@@ -428,10 +442,13 @@ def humayun_tomb():
     # tall central arch (pishtaq) on every face, framed in marble
     for side in range(4):
         fr = box("ht_frame", (0.86, 0.06, 1.12), (0, -B / 2 - 0.01, PH + 0.6), marble, 0.01)
-        ar = prism("ht_arch", arch_points(0.6, 0.62, 0.3, 12), -0.05, 0.02, dark)
+        ar = prism("ht_arch", arch_points(0.6, 0.62, 0.3, 12), -0.05, 0.02, clay2)
         ar.location = (0, -B / 2 - 0.035, PH + 0.08)
         apply_transform(ar)
-        for o in (fr, ar):
+        door = prism("ht_door", arch_points(0.3, 0.36, 0.25, 10), -0.06, 0.03, dark)
+        door.location = (0, -B / 2 - 0.045, PH)
+        apply_transform(door)
+        for o in (fr, ar, door):
             o.data.transform(Matrix.Rotation(side * math.pi / 2, 4, "Z"))
             parts.append(o)
     # drum and the great double dome in marble
