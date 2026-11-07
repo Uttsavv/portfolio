@@ -195,9 +195,13 @@ if (hasWebGL()) {
     console.error(err);
     document.documentElement.classList.add('no-gl');
   });
-  const idle = () => ('requestIdleCallback' in window ? requestIdleCallback(() => start(), { timeout: 800 }) : setTimeout(start, 50));
-  if (document.readyState === 'complete') idle();
-  else addEventListener('load', idle, { once: true });
+  // start straight away: the Delhi model is already downloading (preloaded in the head), so build the scene as soon as it lands
+  start();
 } else {
   document.documentElement.classList.add('no-gl');
+}
+
+/* ---------- offline cache: keep the 3D models and the hashed scripts on the device after the first visit ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  addEventListener('load', () => navigator.serviceWorker.register(import.meta.env.BASE_URL.replace(/\/$/, '') + '/sw.js').catch(() => {}), { once: true });
 }
