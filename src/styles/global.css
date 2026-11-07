@@ -250,8 +250,14 @@ footer a:hover { color: var(--ink); }
   }
   .cue::after {
     top: 0; left: 1px; margin: 0; width: 9px; height: 9px; border-radius: 0; background: none;
-    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); animation: none;
+    border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg);
+    animation: cue-drift 2.8s ease-in-out infinite;
   }
+}
+/* the chevron drifts down a few pixels and warms from faint white to the site's sky blue, with a soft glow, then settles back */
+@keyframes cue-drift {
+  0%, 100% { transform: translateY(0) rotate(45deg); color: rgba(233, 237, 243, .45); filter: none; }
+  50% { transform: translateY(5px) rotate(45deg); color: var(--accent); filter: drop-shadow(0 0 4px rgba(90, 185, 252, .7)); }
 }
 @media (max-width: 860px) and (max-height: 760px) {
   .field textarea { min-height: 64px; }
