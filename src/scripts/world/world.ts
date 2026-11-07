@@ -138,13 +138,13 @@ export async function start() {
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
-    { p: [3.6, 3.9, 13.8], l: [-0.5, 2.9, 0], off: 0.19 },
+    { p: [4.3, 3.9, 14.6], l: [0.2, 2.9, 0], off: 0.19 },
     { p: [WX + 7.5, 5.6, 20.5], l: [WX + 0.6, 1.7, 0.3], off: 0.24 },
     { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [0.95, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [0.8, 0.62, 0.62, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -362,7 +362,7 @@ export async function start() {
       pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
     }
     tmp.subVectors(vP, vL).multiplyScalar(pull - 1); vP.add(tmp);
-    if (phone) { vP.y += 1.0; vL.y += 0.5; const h0 = clamp01(1 - tSmooth * 2); vL.x += 0.7 * h0; vP.x += 0.7 * h0; } // centre the Delhi group in a narrow frame
+    if (phone) { vP.y += 1.0; vL.y += 0.5; const h0 = clamp01(1 - tSmooth * 2); vL.x += 1.1 * h0; vP.x += 1.1 * h0; } // centre the Delhi group in a narrow frame
     const fogK = Math.max(1, pull * 0.9);
     (scene.fog as THREE.Fog).near = 20 * fogK;
     (scene.fog as THREE.Fog).far = 52 * fogK;
@@ -390,7 +390,8 @@ export async function start() {
     const lx = KEYS[0].l[0] + u * (KEYS[KEYS.length - 1].l[0] - KEYS[0].l[0]);
     key.position.set(lx + 7, 12, 8);
     key.target.position.set(lx, 1.5, 0);
-    rim.position.set(lx - 8, 6, -10);
+    // phones: rim straight behind, so its glow pools under the model instead of a band from the left edge
+    rim.position.set(phone ? lx + 1 : lx - 8, 6, -10);
     rim.target.position.set(lx, 1.5, 0);
 
     // Delhi: pieces stand up like a pop-up book
@@ -399,7 +400,7 @@ export async function start() {
       pivot.rotation.x = (1 - v) * -Math.PI / 2;
     }
     delhi.visible = tSmooth < 0.6;
-    moon.visible = halo.visible = !phone;
+    moon.visible = halo.visible = true; // on phones the moon fills the sky above the model
 
     // experience: blocks rise out of the floor one after another
     const pw = tSmooth - 0.25;

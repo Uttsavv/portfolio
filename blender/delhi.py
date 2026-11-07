@@ -1,4 +1,4 @@
-"""Hero scene: Qutub Minar, India Gate, Jama Masjid and a low city skyline, in steel-blue clay."""
+"""Hero scene: Qutub Minar, India Gate, Jama Masjid, the Lotus Temple and an auto-rickshaw, in steel-blue clay."""
 import math
 import random
 from lib import *  # noqa: F401,F403
@@ -307,12 +307,109 @@ def skyline():
     return out
 
 
+
+# ------------------------------------------------------------ Lotus Temple
+
+def petal(name, L, W, cup, tilt, rot, r0, mat, rows=14, cols=10):
+    """One marble petal: a pointed, cupped shell standing on a ring of radius r0, tilted out by `tilt`, turned by `rot`."""
+    bm = bmesh.new()
+    grid = []
+    ct, st = math.cos(tilt), math.sin(tilt)
+    cr, sr = math.cos(rot), math.sin(rot)
+    for i in range(rows + 1):
+        u = i / rows
+        w = W * (math.sin(math.pi * min(1.0, u * 0.92 + 0.08)) ** 0.75) * (1 - 0.55 * u)
+        row = []
+        for j in range(cols + 1):
+            v = -1 + 2 * j / cols
+            x = v * w
+            y = -cup * (1 - v * v) * w - 0.12 * L * u * u  # cupped across, curling in near the tip
+            z = L * u
+            # tilt outward (about local x), then push out to the ring and turn round the centre
+            y2, z2 = y * ct - z * st, y * st + z * ct
+            y2 -= r0
+            row.append(bm.verts.new((x * cr - y2 * sr, x * sr + y2 * cr, z2)))
+        grid.append(row)
+    for i in range(rows):
+        for j in range(cols):
+            bm.faces.new((grid[i][j], grid[i][j + 1], grid[i + 1][j + 1], grid[i + 1][j]))
+    o = mesh_obj(name, bm, mat)
+    solidify(o, 0.035, 0)
+    for f in o.data.polygons:
+        f.use_smooth = True
+    return o
+
+
+def lotus_temple():
+    marble, clay2, dark = M("marble"), M("clay"), M("clay2")
+    parts = []
+    # podium: three nine-sided steps, with the pools as darker rings
+    for k, (r, z0, z1, m) in enumerate([(1.55, 0, 0.12, dark), (1.32, 0.12, 0.2, clay2), (1.12, 0.2, 0.3, marble)]):
+        ring = lathe(f"lt_step{k}", [(0.0, z0), (r, z0), (r, z1), (0.0, z1)], 9, m)
+        ring.rotation_euler = (0, 0, math.pi / 9)
+        parts.append(ring)
+    # three rings of nine petals: inner closed bud, middle half open, outer arching out like canopies
+    for k in range(9):
+        a = 2 * math.pi * k / 9
+        parts.append(petal(f"lt_in{k}", 1.35, 0.34, 0.55, math.radians(-8), a, 0.22, marble))
+        parts.append(petal(f"lt_mid{k}", 1.1, 0.42, 0.5, math.radians(22), a + math.pi / 9, 0.5, marble))
+        parts.append(petal(f"lt_out{k}", 0.85, 0.46, 0.45, math.radians(62), a, 0.86, marble))
+    for o in parts[3:]:
+        o.location.z += 0.3
+    return join("lotus", parts)
+
+
+# ------------------------------------------------------------ auto-rickshaw
+
+def auto_rickshaw():
+    clay, blue, rubber, steel, glow, dark = M("clay"), M("blue"), M("rubber"), M("steel"), M("glow"), M("clayDark")
+    parts = []
+    # floor pan and rear seat box
+    parts.append(box("ar_floor", (0.62, 1.05, 0.1), (0, 0.02, 0.2), clay, 0.03))
+    parts.append(box("ar_seat", (0.6, 0.34, 0.24), (0, 0.34, 0.36), dark, 0.04))
+    # front cowl: a tapered nose with the windscreen frame above
+    nose = loft("ar_nose", [
+        [(-0.31, -0.28, 0.15), (0.31, -0.28, 0.15), (0.31, -0.28, 0.62), (-0.31, -0.28, 0.62)],
+        [(-0.2, -0.52, 0.15), (0.2, -0.52, 0.15), (0.16, -0.48, 0.56), (-0.16, -0.48, 0.56)],
+    ], clay)
+    bevel_mod(nose, 0.03, 2, 30)
+    parts.append(nose)
+    parts.append(box("ar_screen", (0.5, 0.03, 0.34), (0, -0.3, 0.8), M("glass"), 0.01))
+    # canopy: a rounded hood over the cabin
+    rings = []
+    for i in range(9):
+        y = -0.34 + 0.86 * i / 8
+        drop = 0.04 * (1 - (2 * i / 8 - 1) ** 2)
+        ring = []
+        for j in range(13):
+            t = math.pi * j / 12
+            ring.append((0.34 * math.cos(t), y, 0.98 + drop + 0.16 * math.sin(t)))
+        rings.append(ring)
+    hood = loft("ar_hood", rings, blue, cap_bottom=True, cap_top=True, closed=False)
+    solidify(hood, 0.025, 0)
+    parts.append(hood)
+    for x in (-0.31, 0.31):
+        parts.append(cylinder("ar_post", 0.016, 0.66, (x, 0.48, 0.3), 10, steel))
+        parts.append(cylinder("ar_postf", 0.016, 0.36, (x, -0.3, 0.62), 10, steel))
+    # wheels: one at the front, two at the back
+    for (x, y) in ((0, -0.42), (-0.33, 0.36), (0.33, 0.36)):
+        w = cylinder("ar_wheel", 0.13, 0.08, (0, 0, -0.04), 24, rubber, bevel=0.02)
+        w.rotation_euler = (0, math.pi / 2, 0)
+        w.location = (x, y, 0.13)
+        parts.append(w)
+    parts.append(sphere("ar_lamp", 0.045, (0, -0.53, 0.5), 16, 8, glow))
+    return join("auto", parts)
+
+
 def build(coll):
     objs = []
     # overlapping like a pop-up book: Qutub front-left, India Gate front-right, Jama Masjid behind both
     q = qutub(); q.location = (-2.7, -0.5, 0); objs.append(q)
     g = india_gate(); g.location = (1.35, -0.1, 0); objs.append(g)
     j = jama_masjid(); j.location = (-0.6, 3.1, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (1.12, 1.12, 1.12); objs.append(j)
+    # more of Delhi: the Lotus Temple behind the gate's right shoulder, an auto-rickshaw parked in front
+    lt = lotus_temple(); lt.location = (3.1, 2.5, 0); lt.scale = (1.4, 1.4, 1.4); objs.append(lt)
+    ar = auto_rickshaw(); ar.location = (-0.55, -1.75, 0); ar.rotation_euler = (0, 0, math.radians(-28)); ar.scale = (1.35, 1.35, 1.35); objs.append(ar)
     for o in objs:
         for c in o.users_collection:
             c.objects.unlink(o)
