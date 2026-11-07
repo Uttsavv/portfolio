@@ -214,7 +214,8 @@ footer a:hover { color: var(--ink); }
     padding-top: calc(var(--nav-h) + 42svh); --pb: var(--s-7); padding-bottom: var(--pb);
   }
   #top .pin { padding-top: calc(var(--nav-h) + 24svh); } /* the hero's text always fits one screen; its band takes the rest */
-  #top .pin { --pb: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--pb); }
+  /* the name block sits nearer the middle of the screen; the scene band above it rises with it */
+  #top .pin { --pb: calc(var(--s-6) + 10svh + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--pb); }
   .panel { position: relative; isolation: isolate; }
   /* the text's ground: full-bleed, solid, with an eased fade on top so the model's foot dissolves into it */
   .panel::before {

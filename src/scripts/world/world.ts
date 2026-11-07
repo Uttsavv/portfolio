@@ -15,6 +15,7 @@ const WX = 34, PX = 68, CX = 102; // x of each scene along the path
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const ease = (v: number) => (v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2);
 const smoother = (v: number) => v * v * v * (v * (v * 6 - 15) + 10);
+const softSpring = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : 1 + 1.5 * (v - 1) ** 3 + 0.5 * (v - 1) ** 2); // eases up, the slightest settle at the end
 const spring = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : 1 - Math.exp(-6 * v) * Math.cos(9 * v)); // a little overshoot
 
 export async function start() {
@@ -106,7 +107,7 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3 }[] = [];
+  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3; hit: number }[] = []; // hit: when it was last knocked over (s), -1 = never
   const delhi = new THREE.Group();
   scene.add(delhi);
   [...delhiRoot.children].forEach((child) => {
@@ -117,7 +118,7 @@ export async function start() {
     delhi.add(pivot);
     const n = child.name;
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
-    pops.push({ pivot, delay, base: pivot.position.clone() });
+    pops.push({ pivot, delay, base: pivot.position.clone(), hit: -1 });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
@@ -144,7 +145,7 @@ export async function start() {
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [1.45, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.26, 0.62, 0.62, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -327,20 +328,41 @@ export async function start() {
     const el = t as HTMLElement | null;
     return !!el && !!el.closest?.('.pin') && !el.closest('.panel, a, button, input, textarea, label, form, .nav');
   };
+  // a tap (short press, no movement) on a Delhi piece knocks it flat; it springs back up on its own
+  let downX = 0, downY = 0, downT = 0, travel = 0;
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  const tap = (x: number, y: number) => {
+    if (!delhi.visible) return;
+    ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(delhi, true)[0];
+
+    if (!hit) return;
+    let o: THREE.Object3D | null = hit.object;
+    while (o && o.parent !== delhi) o = o.parent;
+    const p = pops.find((q) => q.pivot === o);
+    const now = performance.now() / 1000;
+    if (p && (p.hit < 0 || now - p.hit > 0.5)) { p.hit = now; dirty = true; }
+  };
   addEventListener('pointerdown', (e) => {
     if (!grabbable(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    downX = e.clientX; downY = e.clientY; downT = performance.now(); travel = 0;
     dragging = true; dragX = e.clientX;
     document.documentElement.classList.add('grabbing');
   });
   addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - dragX;
+    travel = Math.max(travel, Math.hypot(e.clientX - downX, e.clientY - downY));
     const d = dx * (5 / Math.max(360, innerWidth)); // grab-and-turn: drag right brings the left side round; a drag across the screen turns the scene well round; clamped to about ±63°
     yawUser = Math.max(-1.1, Math.min(1.1, yawUser + d));
     dragX = e.clientX;
   }, { passive: true });
   const endDrag = () => { if (!dragging) return; dragging = false; document.documentElement.classList.remove('grabbing'); };
-  addEventListener('pointerup', endDrag);
+  addEventListener('pointerup', (e) => {
+    if (dragging && travel < 8 && performance.now() - downT < 400) tap(e.clientX, e.clientY);
+    endDrag();
+  });
   addEventListener('pointercancel', endDrag);
   addEventListener('touchend', endDrag, { passive: true });
   addEventListener('blur', endDrag);
@@ -439,9 +461,23 @@ export async function start() {
     rim.target.position.set(lx, 1.5, 0);
 
     // Delhi: pieces stand up like a pop-up book
-    for (const { pivot, delay } of pops) {
-      const v = spring(clamp01((intro - 0.4 - delay * 2.2) / 1.1));
-      pivot.rotation.x = (1 - v) * -Math.PI / 2;
+    // load-in: each piece unfolds from lying face-down towards the viewer (so no bare underside shows),
+    // growing as it rises, with a soft settle; the canvas fades in over the same moment
+    const nowS = performance.now() / 1000;
+    for (const p of pops) {
+      const u = clamp01((intro - 0.15 - p.delay * 2.2) / 1.5);
+      const v = softSpring(u);
+      let rx = (1 - v) * (Math.PI / 2) * 0.96;
+      // knocked over by a tap: folds flat (like gravity), rests a beat, then springs upright with a bounce
+      if (p.hit >= 0) {
+        const k = nowS - p.hit;
+        const fall = 0.32, rest = 0.18, back = 1.5;
+        const a = k < fall ? (k / fall) ** 2 : k < fall + rest ? 1 : 1 - spring(clamp01((k - fall - rest) / back));
+        rx += a * (Math.PI / 2) * 0.94; // folds forward, the way it unfolded, so its underside never faces you
+        if (k > fall + rest + back) p.hit = -1;
+      }
+      p.pivot.rotation.x = rx;
+      p.pivot.scale.setScalar(0.55 + 0.45 * Math.min(1, v));
     }
     delhi.visible = tSmooth < 0.6;
     moon.visible = halo.visible = true; // on phones the moon fills the sky above the model
@@ -508,8 +544,9 @@ export async function start() {
 
 
     // draw only when something on screen changed: an idle page costs nothing
-    const moving = floaters.some((o) => o.g.visible) || !!(plane && plane.visible) || !!(flag && blocks.some((b) => b.g.visible));
-    const shadowsMoved = intro < 3.5 || Math.abs(tSmooth - lastT) > 1e-5 || Math.abs(lpS - lastLp) > 1e-5;
+    const toppling = pops.some((p) => p.hit >= 0);
+    const moving = toppling || floaters.some((o) => o.g.visible) || !!(plane && plane.visible) || !!(flag && blocks.some((b) => b.g.visible));
+    const shadowsMoved = intro < 3.5 || pops.some((p) => p.hit >= 0) || Math.abs(tSmooth - lastT) > 1e-5 || Math.abs(lpS - lastLp) > 1e-5;
     const camMoved = vP.distanceToSquared(lastP) > 1e-8 || vL.distanceToSquared(lastL) > 1e-8 || Math.abs(ox - lastOx) > 0.05 || Math.abs(oy - lastOy) > 0.05;
     if (dirty || moving || shadowsMoved || camMoved) {
       if (shadowsMoved || dirty) renderer.shadowMap.needsUpdate = true;
