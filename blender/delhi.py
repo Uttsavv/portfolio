@@ -1,4 +1,4 @@
-"""Hero scene: Qutub Minar, India Gate, Jama Masjid, the Lotus Temple and an auto-rickshaw, in steel-blue clay."""
+"""Hero scene: Qutub Minar, India Gate, Jama Masjid, the Lotus Temple, Humayun's Tomb and an auto-rickshaw, in steel-blue clay."""
 import math
 import random
 from lib import *  # noqa: F401,F403
@@ -401,15 +401,65 @@ def auto_rickshaw():
     return join("auto", parts)
 
 
+
+# ------------------------------------------------------------ Humayun's Tomb
+
+def humayun_tomb():
+    clay, clay2, dark, marble = M("clay"), M("clay2"), M("clayDark"), M("marble")
+    parts = []
+    # arcaded plinth: a broad low platform with a row of arched niches on each face
+    PW, PH = 3.0, 0.5
+    parts.append(box("ht_plinth", (PW, PW, PH), (0, 0, PH / 2), clay2, 0.02))
+    n = 7
+    for side in range(4):
+        for k in range(n):
+            x = -PW / 2 + PW * (k + 0.5) / n
+            niche = prism("ht_niche", arch_points(0.24, 0.2, 0.25, 8), -0.02, 0.02, dark)
+            niche.location = (x, -PW / 2 - 0.005, 0.08)
+            niche.rotation_euler = (0, 0, 0)
+            apply_transform(niche)
+            niche.data.transform(Matrix.Rotation(side * math.pi / 2, 4, "Z"))
+            parts.append(niche)
+    # main block with chamfered corners
+    B, BH = 1.9, 1.25
+    blk = box("ht_block", (B, B, BH), (0, 0, PH + BH / 2), clay, 0.0)
+    bevel_mod(blk, 0.32, 1, 60)
+    parts.append(blk)
+    # tall central arch (pishtaq) on every face, framed in marble
+    for side in range(4):
+        fr = box("ht_frame", (0.86, 0.06, 1.12), (0, -B / 2 - 0.01, PH + 0.6), marble, 0.01)
+        ar = prism("ht_arch", arch_points(0.6, 0.62, 0.3, 12), -0.05, 0.02, dark)
+        ar.location = (0, -B / 2 - 0.035, PH + 0.08)
+        apply_transform(ar)
+        for o in (fr, ar):
+            o.data.transform(Matrix.Rotation(side * math.pi / 2, 4, "Z"))
+            parts.append(o)
+    # drum and the great double dome in marble
+    top = PH + BH
+    parts.append(cylinder("ht_drum", 0.62, 0.32, (0, 0, top), 40, clay2))
+    dome = lathe("ht_dome", [(0.6, 0), (0.7, 0.18), (0.74, 0.42), (0.66, 0.72), (0.46, 0.95), (0.22, 1.08), (0.0, 1.12)], 48, marble)
+    dome.location = (0, 0, top + 0.32)
+    apply_transform(dome)
+    parts.append(dome)
+    parts.append(cylinder("ht_fin", 0.035, 0.32, (0, 0, top + 1.42), 8, clay2, r2=0.0))
+    # chhatris on the four corners of the roof
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts += chhatri(f"ht_c{sx}{sy}", 0.17, 0.62, (sx * 0.62, sy * 0.62, top), (clay, clay2, marble))
+    return join("humayun", parts)
+
+
 def build(coll):
     objs = []
     # overlapping like a pop-up book: Qutub front-left, India Gate front-right, Jama Masjid behind both
-    q = qutub(); q.location = (-2.7, -0.5, 0); objs.append(q)
-    g = india_gate(); g.location = (1.35, -0.1, 0); objs.append(g)
-    j = jama_masjid(); j.location = (-0.6, 3.1, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (1.12, 1.12, 1.12); objs.append(j)
-    # more of Delhi: the Lotus Temple behind the gate's right shoulder, an auto-rickshaw parked in front
-    lt = lotus_temple(); lt.location = (3.1, 2.5, 0); lt.scale = (1.4, 1.4, 1.4); objs.append(lt)
-    ar = auto_rickshaw(); ar.location = (-0.55, -1.75, 0); ar.rotation_euler = (0, 0, math.radians(-28)); ar.scale = (1.35, 1.35, 1.35); objs.append(ar)
+    # a spread-out skyline so nothing hides: Qutub left, Jama Masjid behind the gap, India Gate centre-right,
+    # the Lotus Temple and Humayun's Tomb filling the right, an auto-rickshaw parked in front
+    q = qutub(); q.location = (-3.3, -0.2, 0); objs.append(q)
+    j = jama_masjid(); j.location = (-1.0, 3.6, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (1.12, 1.12, 1.12); objs.append(j)
+    g = india_gate(); g.location = (1.3, -0.3, 0); g.scale = (0.92, 0.92, 0.92); objs.append(g)
+    lt = lotus_temple(); lt.location = (4.0, 0.6, 0); lt.scale = (1.25, 1.25, 1.25); objs.append(lt)
+    ht = humayun_tomb(); ht.location = (4.6, 4.2, 0); ht.scale = (1.2, 1.2, 1.2); objs.append(ht)
+    ar = auto_rickshaw(); ar.location = (-1.0, -1.9, 0); ar.rotation_euler = (0, 0, math.radians(-28)); ar.scale = (1.35, 1.35, 1.35); objs.append(ar)
     for o in objs:
         for c in o.users_collection:
             c.objects.unlink(o)
