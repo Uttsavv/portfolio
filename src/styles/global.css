@@ -220,10 +220,7 @@ footer a:hover { color: var(--ink); }
   }
   /* the text owns the full width under the scene: no narrow column with dead space beside it */
   .panel, .hero .panel { max-width: none; width: 100%; }
-  .hero .actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
-  .hero .actions .btn { width: 100%; }
-  .hero .actions .link { justify-content: center; min-height: 50px; border-radius: var(--r-pill); border: 1px solid rgba(233, 237, 243, .28); color: var(--ink); font-weight: 600; }
-  .hero .actions .link svg { color: var(--accent); }
+  .hero .actions { justify-content: flex-end; }
   .jobs, .pshow, .form { margin-top: var(--s-5); }
   .job { padding: var(--s-3) 0; }
   .job p { font-size: 15.5px; }
@@ -250,8 +247,6 @@ footer a:hover { color: var(--ink); }
 }
 @media (max-width: 340px) { .brand { display: none; } .nav .wrap { justify-content: center; } }
 @media (max-width: 480px) {
-  .hero .meta .stack { display: block; }
-  .hero .meta .dot { display: none; }
   .form__foot .btn { width: 100%; }
 }
 

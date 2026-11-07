@@ -9,7 +9,7 @@ import Icon from './Icon.astro';
         <p class="eyebrow">{profile.role}</p>
         <h1 id="hero-title" tabindex="-1">{profile.firstName}<br /><span class="grad">{profile.lastName}.</span></h1>
         <div class="meta">
-          <p><b>{profile.experience}</b> <span class="stack"><span class="dot" aria-hidden="true">· </span>{profile.stack.join(', ')}</span></p>
+          <p><b>{profile.experience}</b> <span class="dot" aria-hidden="true">·</span> <span class="stack">{profile.stack.join(', ')}</span></p>
           <p>Based in <b>{profile.city}</b></p>
         </div>
         <div class="actions">
