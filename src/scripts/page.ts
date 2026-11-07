@@ -26,7 +26,7 @@ const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x 
 
 function sectionY(el: HTMLElement) {
   if (el.id === 'top') return 0;
-  if (innerWidth <= 860 && el.id !== 'projects') return el.offsetTop; // phones: sections flow, land on the scene band
+  if (innerWidth <= 860) return el.offsetTop; // phones: sections flow, land on the scene band
   const run = Math.max(0, el.offsetHeight - innerHeight);
   return el.offsetTop + run * 0.22;
 }
@@ -75,29 +75,54 @@ const tabs = [...proj.querySelectorAll<HTMLButtonElement>('.ptab')];
 const bars = tabs.map((t) => t.querySelector('b')!);
 const count = slides.length;
 let activeSlide = 0;
+// phones: projects are a tap/swipe carousel; wide screens: scroll drives them through a pinned stretch
+const flowQ = matchMedia('(max-width: 860px)');
+
+function setSlide(a: number) {
+  activeSlide = a;
+  proj.dataset.active = String(a); // the 3D world follows this on phones
+  slides.forEach((s, i) => {
+    s.classList.toggle('on', i === a);
+    s.classList.toggle('past', i < a);
+    s.toggleAttribute('inert', i !== a);
+  });
+  tabs.forEach((t, i) => t.setAttribute('aria-current', String(i === a)));
+}
 
 function onProjects() {
+  if (flowQ.matches) {
+    bars.forEach((b, i) => (b.style.width = i <= activeSlide ? '100%' : '0%'));
+    return;
+  }
   const p = projectProgress(proj);
   const a = slideIndex(p, count);
-  if (a !== activeSlide) {
-    activeSlide = a;
-    slides.forEach((s, i) => {
-      s.classList.toggle('on', i === a);
-      s.classList.toggle('past', i < a);
-      s.toggleAttribute('inert', i !== a);
-    });
-    tabs.forEach((t, i) => t.setAttribute('aria-current', String(i === a)));
-  }
+  if (a !== activeSlide) setSlide(a);
   bars.forEach((b, i) => (b.style.width = Math.max(0, Math.min(1, p * count - i)) * 100 + '%'));
 }
 slides.forEach((s, i) => s.toggleAttribute('inert', i !== 0));
+proj.dataset.active = '0';
 tabs.forEach((t, i) =>
   t.addEventListener('click', () => {
+    if (flowQ.matches) { setSlide(i); onProjects(); return; }
     const run = proj.offsetHeight - innerHeight;
     // land in the middle of that project's stretch of scroll
     smoothTo(proj.offsetTop + run * (0.2 + 0.6 * ((i + 0.5) / count)));
   }),
 );
+// swipe left/right through projects on phones
+const pshow = proj.querySelector<HTMLElement>('.pshow');
+let swipeX = 0, swipeY = 0, swiping = false;
+pshow?.addEventListener('pointerdown', (e) => { if (!flowQ.matches) return; swiping = true; swipeX = e.clientX; swipeY = e.clientY; });
+pshow?.addEventListener('pointerup', (e) => {
+  if (!swiping) return;
+  swiping = false;
+  const dx = e.clientX - swipeX, dy = e.clientY - swipeY;
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+  const next = Math.max(0, Math.min(count - 1, activeSlide + (dx < 0 ? 1 : -1)));
+  if (next !== activeSlide) { setSlide(next); onProjects(); }
+});
+pshow?.addEventListener('pointercancel', () => (swiping = false));
+flowQ.addEventListener('change', onProjects);
 
 let scrollQueued = false; // one layout read per frame, not per scroll event
 addEventListener('scroll', () => { if (scrollQueued) return; scrollQueued = true; requestAnimationFrame(() => { scrollQueued = false; onScroll(); onProjects(); }); }, { passive: true });
