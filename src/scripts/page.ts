@@ -26,6 +26,7 @@ const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x 
 
 function sectionY(el: HTMLElement) {
   if (el.id === 'top') return 0;
+  if (innerWidth <= 860 && el.id !== 'projects') return el.offsetTop; // phones: sections flow, land on the scene band
   const run = Math.max(0, el.offsetHeight - innerHeight);
   return el.offsetTop + run * 0.22;
 }
