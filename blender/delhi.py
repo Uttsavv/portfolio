@@ -532,7 +532,7 @@ def build(coll):
     # a spread-out skyline so nothing hides: Qutub left, Jama Masjid behind the gap, India Gate centre-right,
     # the Lotus Temple and Humayun's Tomb filling the right, an auto-rickshaw parked in front
     q = qutub(); q.location = (-3.3, -0.2, 0); objs.append(q)
-    j = jama_masjid(); j.location = (-1.0, 3.6, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (0.95, 0.95, 0.95); objs.append(j)
+    j = jama_masjid(); j.location = (-1.0, 4.3, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (0.95, 0.95, 0.95); objs.append(j)
     g = india_gate(); g.location = (1.3, -0.3, 0); g.scale = (0.92, 0.92, 0.92); objs.append(g)
     lt = lotus_temple(); lt.location = (4.0, 0.6, 0); lt.scale = (1.25, 1.25, 1.25); objs.append(lt)
     ht = humayun_tomb(); ht.location = (6.0, 3.4, 0); ht.rotation_euler = (0, 0, math.radians(-22)); ht.scale = (1.45, 1.45, 1.45); objs.append(ht)
