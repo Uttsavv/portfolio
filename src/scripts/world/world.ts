@@ -107,7 +107,9 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3; hit: number; back: number }[] = []; // back: z of its bottom back edge (the hinge it topples over); hit: when it was last knocked over (s), -1 = never
+  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3; hit: number; back: number; front: number; th: number; om: number; ph: number }[] = [];
+  // back: z of its bottom back edge (the hinge it topples over); th/om: how far it has toppled (rad) and how fast;
+  // ph: 0 standing, 1 falling, 2 lying flat, 3 springing back; hit: when it landed flat (s)
   let popSpread = 1;
   const delhi = new THREE.Group();
   scene.add(delhi);
@@ -121,7 +123,7 @@ export async function start() {
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
     pivot.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(child);
-    pops.push({ pivot, delay, base: pivot.position.clone(), hit: -1, back: box.min.z - pivot.position.z });
+    pops.push({ pivot, delay, base: pivot.position.clone(), hit: -1, back: box.min.z - pivot.position.z, front: box.max.z - pivot.position.z, th: 0, om: 0, ph: 0 });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
@@ -345,8 +347,7 @@ export async function start() {
     let o: THREE.Object3D | null = hit.object;
     while (o && o.parent !== delhi) o = o.parent;
     const p = pops.find((q) => q.pivot === o);
-    const now = performance.now() / 1000;
-    if (p && (p.hit < 0 || now - p.hit > 0.5)) { p.hit = now; dirty = true; }
+    if (p && (p.ph === 0 || p.ph === 3)) { p.ph = 1; p.om = Math.max(p.om, 0) + 2.6; dirty = true; } // a push to start it tipping
   };
   addEventListener('pointerdown', (e) => {
     if (!grabbable(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -472,17 +473,34 @@ export async function start() {
       const u = clamp01((intro - 0.15 - p.delay * 2.2) / 1.5);
       const v = softSpring(u);
       let rx = (1 - v) * (Math.PI / 2) * 0.96, knock = 0;
-      // knocked over by a tap: folds flat (like gravity), rests a beat, then springs upright with a bounce
-      if (p.hit >= 0) {
-        const k = nowS - p.hit;
-        const fall = 0.32, rest = 0.18, back = 1.5;
-        const a = k < fall ? (k / fall) ** 2 : k < fall + rest ? 1 : 1 - spring(clamp01((k - fall - rest) / back));
-        knock = -a * (Math.PI / 2) * 0.94; // falls backwards, away from you
-        if (k > fall + rest + back) p.hit = -1;
+      // knocked over by a tap: real physics in small steps.
+      //  falling: an inverted pendulum on its back edge, so it starts slow and speeds up as it tips (θ'' = g/L·sin θ)
+      //  flat: lands with a small bounce and lies there a beat
+      //  back up: a damped spring (θ'' = -kθ - cθ', ζ ≈ 0.45), so it snaps up, overshoots past upright and settles
+      if (p.ph !== 0) {
+        const FLAT = (Math.PI / 2) * 0.94, G = 26, K = 70, C = 2 * 0.45 * Math.sqrt(K);
+        for (let n = Math.max(1, Math.round(dt * 240)), h = dt / n; n > 0; n--) {
+          if (p.ph === 1) {
+            p.om += G * Math.sin(Math.max(p.th, 0.02)) * h;
+            p.th += p.om * h;
+            if (p.th >= FLAT) { p.th = FLAT; p.om = -p.om * 0.16; p.ph = 2; p.hit = nowS; }
+          } else if (p.ph === 2) {
+            p.om += G * Math.sin(p.th) * h; // settles back onto the floor after the little bounce
+            p.th = Math.min(FLAT, p.th + p.om * h);
+            if (p.th >= FLAT) p.om = 0;
+            if (nowS - p.hit > 0.35) { p.ph = 3; p.om = 0; }
+          } else {
+            p.om += (-K * p.th - C * p.om) * h;
+            p.th += p.om * h;
+            if (Math.abs(p.th) < 1e-3 && Math.abs(p.om) < 1e-2) { p.th = 0; p.om = 0; p.ph = 0; }
+          }
+        }
+        knock = -p.th; // backwards, away from you
       }
       p.pivot.rotation.x = rx + knock;
       // hinge the knock on the bottom back edge rather than the middle of the base
-      const hz = p.back * p.pivot.scale.x; // keep that edge where it is: shift the pivot by H - R·H
+      // backwards it rocks on its back edge; a spring overshoot forwards rocks on its front edge. Keep that edge fixed: shift by H - R·H
+      const hz = (knock <= 0 ? p.back : p.front) * p.pivot.scale.x;
       p.pivot.position.set(p.base.x * popSpread, p.base.y + Math.sin(knock) * hz, p.base.z * popSpread + hz - Math.cos(knock) * hz);
       p.pivot.scale.setScalar(0.55 + 0.45 * Math.min(1, v));
     }
@@ -551,9 +569,9 @@ export async function start() {
 
 
     // draw only when something on screen changed: an idle page costs nothing
-    const toppling = pops.some((p) => p.hit >= 0);
+    const toppling = pops.some((p) => p.ph !== 0);
     const moving = toppling || floaters.some((o) => o.g.visible) || !!(plane && plane.visible) || !!(flag && blocks.some((b) => b.g.visible));
-    const shadowsMoved = intro < 3.5 || pops.some((p) => p.hit >= 0) || Math.abs(tSmooth - lastT) > 1e-5 || Math.abs(lpS - lastLp) > 1e-5;
+    const shadowsMoved = intro < 3.5 || pops.some((p) => p.ph !== 0) || Math.abs(tSmooth - lastT) > 1e-5 || Math.abs(lpS - lastLp) > 1e-5;
     const camMoved = vP.distanceToSquared(lastP) > 1e-8 || vL.distanceToSquared(lastL) > 1e-8 || Math.abs(ox - lastOx) > 0.05 || Math.abs(oy - lastOy) > 0.05;
     if (dirty || moving || shadowsMoved || camMoved) {
       if (shadowsMoved || dirty) renderer.shadowMap.needsUpdate = true;
