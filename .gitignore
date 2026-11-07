@@ -1,3 +1,10 @@
 .taste-skill/
 node_modules/
 .DS_Store
+dist/
+.astro/
+blender/out/
+__pycache__/
+shots/
+dist-check/
+.taste-skill/chrome-*

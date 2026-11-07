@@ -1,0 +1,22 @@
+---
+import jobs from '../data/experience.json';
+const range = (j: (typeof jobs)[number]) => (j.end === null ? `${j.start} – now` : j.start === j.end ? j.start : `${j.start} – ${j.end}`);
+---
+<section class="scene" id="work" aria-labelledby="work-title">
+  <div class="pin">
+    <div class="wrap">
+      <div class="panel">
+        <h2 id="work-title" tabindex="-1">Experience</h2>
+        <ol class="jobs">
+          {jobs.map((j) => (
+            <li class="job">
+              <p class="role"><strong>{j.role}</strong>{j.end === null && <span class="tag">Now</span>}</p>
+              <span class="when">{range(j)}</span>
+              <p><span class="co">{j.company}</span> · {j.summary}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>

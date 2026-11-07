@@ -1,0 +1,31 @@
+---
+import projects from '../data/projects.json';
+import Icon from './Icon.astro';
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+<section class="scene" id="projects" aria-labelledby="projects-title" data-count={projects.length}>
+  <div class="pin">
+    <div class="wrap">
+      <div class="panel">
+        <h2 id="projects-title" tabindex="-1">Projects</h2>
+        <div class="pshow">
+          <div class="pslides">
+            {projects.map((p, i) => (
+              <article class:list={['pslide', { on: i === 0 }]} data-i={i} aria-labelledby={`p-${i}`}>
+                <p class="pmeta">{p.year} · {p.stack.join(' · ')}</p>
+                <h3 id={`p-${i}`}>{p.name}</h3>
+                <p class="pdesc">{p.description}</p>
+                <a class="link out" href={p.url} target="_blank" rel="noopener"><span>View on GitHub</span><Icon name="out" /><span class="sr-only"> (opens in a new tab)</span></a>
+              </article>
+            ))}
+          </div>
+          <ol class="ptabs" aria-label="Projects">
+            {projects.map((p, i) => (
+              <li style="display:contents"><button class="ptab" type="button" data-go={i} aria-current={i === 0 ? 'true' : 'false'} aria-label={`Show ${p.name}`}>{pad(i + 1)}<i><b></b></i></button></li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
