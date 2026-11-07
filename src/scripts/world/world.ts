@@ -138,13 +138,13 @@ export async function start() {
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
-    { p: [7.2, 4.0, 16.0], l: [2.9, 2.8, 0], off: 0.19 },
+    { p: [7.6, 4.1, 17.0], l: [3.3, 2.8, 0], off: 0.19 },
     { p: [WX + 7.5, 5.6, 20.5], l: [WX + 0.6, 1.7, 0.3], off: 0.24 },
     { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [1.36, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.46, 0.62, 0.62, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -393,7 +393,7 @@ export async function start() {
       vP.y += 1.0; vL.y += 0.5;
       // hero on phones: look at Delhi head-on and from higher up, so the back row shows over the front one
       const h0 = clamp01(1 - tSmooth * 2);
-      vL.x += (2.1 - vL.x) * h0;
+      vL.x += (2.55 - vL.x) * h0;
       vP.x += (vL.x + 1.2 - vP.x) * h0;
       vP.y += 2.2 * h0;
       // contact on phones: centre the envelope and the plane's loop, and lift them clear of the heading
