@@ -107,23 +107,29 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3; hit: number; back: number; front: number; th: number; om: number; ph: number }[] = [];
-  // back: z of its bottom back edge (the hinge it topples over); th/om: how far it has toppled (rad) and how fast;
+  const pops: { pivot: THREE.Group; hinge: THREE.Group; delay: number; base: THREE.Vector3; hit: number; th: number; om: number; ph: number }[] = [];
+  // hinge: a group sitting on the ground at the piece's bottom back edge, the only thing a tap rotates; th/om: how far it has toppled (rad) and how fast;
   // ph: 0 standing, 1 falling, 2 lying flat, 3 springing back; hit: when it landed flat (s)
-  let popSpread = 1;
   const delhi = new THREE.Group();
   scene.add(delhi);
   [...delhiRoot.children].forEach((child) => {
-    const pivot = new THREE.Group();
+    // the piece's own footprint, relative to its origin: its hinge is the bottom back edge (lowest y, furthest from the camera)
+    child.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(child);
+    const edge = new THREE.Vector3(0, box.min.y - child.position.y, box.min.z - child.position.z);
+    // pivot (load-in unfold + spread) > hinge (on that edge; topples) > inner (undoes the offset) > the piece
+    const pivot = new THREE.Group(), hinge = new THREE.Group(), inner = new THREE.Group();
     pivot.position.copy(child.position);
     child.position.set(0, 0, 0);
-    pivot.add(child);
+    hinge.position.copy(edge);
+    inner.position.copy(edge).negate();
+    inner.add(child);
+    hinge.add(inner);
+    pivot.add(hinge);
     delhi.add(pivot);
     const n = child.name;
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
-    pivot.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(child);
-    pops.push({ pivot, delay, base: pivot.position.clone(), hit: -1, back: box.min.z - pivot.position.z, front: box.max.z - pivot.position.z, th: 0, om: 0, ph: 0 });
+    pops.push({ pivot, hinge, delay, base: pivot.position.clone(), hit: -1, th: 0, om: 0, ph: 0 });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
@@ -173,7 +179,6 @@ export async function start() {
     phone = W <= 860;
     // wide screens have room: the Delhi landmarks stand further apart
     const spread = phone ? 1.4 : 1.3;
-    popSpread = spread;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
     applyRes();
     camera.aspect = W / H;
@@ -472,13 +477,14 @@ export async function start() {
     for (const p of pops) {
       const u = clamp01((intro - 0.15 - p.delay * 2.2) / 1.5);
       const v = softSpring(u);
-      let rx = (1 - v) * (Math.PI / 2) * 0.96, knock = 0;
+      const rx = (1 - v) * (Math.PI / 2) * 0.96;
       // knocked over by a tap: real physics in small steps.
       //  falling: an inverted pendulum on its back edge, so it starts slow and speeds up as it tips (θ'' = g/L·sin θ)
       //  flat: lands with a small bounce and lies there a beat
-      //  back up: a damped spring (θ'' = -kθ - cθ', ζ ≈ 0.45), so it snaps up, overshoots past upright and settles
+      //  back up: a stiff spring pulls it upright (θ'' = -kθ - cθ'); it can't tip forward through its own base,
+      //  so it hits upright, bounces back a little, and settles in a few smaller bounces
       if (p.ph !== 0) {
-        const FLAT = (Math.PI / 2) * 0.94, G = 26, K = 70, C = 2 * 0.45 * Math.sqrt(K);
+        const FLAT = (Math.PI / 2) * 0.94, G = 26, K = 70, C = 2 * 0.2 * Math.sqrt(K);
         for (let n = Math.max(1, Math.round(dt * 240)), h = dt / n; n > 0; n--) {
           if (p.ph === 1) {
             p.om += G * Math.sin(Math.max(p.th, 0.02)) * h;
@@ -492,16 +498,13 @@ export async function start() {
           } else {
             p.om += (-K * p.th - C * p.om) * h;
             p.th += p.om * h;
+            if (p.th < 0) { p.th = 0; p.om = -p.om * 0.42; } // knocks upright and rebounds
             if (Math.abs(p.th) < 1e-3 && Math.abs(p.om) < 1e-2) { p.th = 0; p.om = 0; p.ph = 0; }
           }
         }
-        knock = -p.th; // backwards, away from you
       }
-      p.pivot.rotation.x = rx + knock;
-      // hinge the knock on the bottom back edge rather than the middle of the base
-      // backwards it rocks on its back edge; a spring overshoot forwards rocks on its front edge. Keep that edge fixed: shift by H - R·H
-      const hz = (knock <= 0 ? p.back : p.front) * p.pivot.scale.x;
-      p.pivot.position.set(p.base.x * popSpread, p.base.y + Math.sin(knock) * hz, p.base.z * popSpread + hz - Math.cos(knock) * hz);
+      p.hinge.rotation.x = -p.th; // backwards, away from you, about the ground edge
+      p.pivot.rotation.x = rx;
       p.pivot.scale.setScalar(0.55 + 0.45 * Math.min(1, v));
     }
     delhi.visible = tSmooth < 0.6;
