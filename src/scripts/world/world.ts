@@ -138,13 +138,13 @@ export async function start() {
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
-    { p: [6.2, 3.8, 14.0], l: [1.7, 2.8, 0], off: 0.19 },
+    { p: [7.2, 4.0, 16.0], l: [2.9, 2.8, 0], off: 0.19 },
     { p: [WX + 7.5, 5.6, 20.5], l: [WX + 0.6, 1.7, 0.3], off: 0.24 },
     { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [1.25, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.65, 0.62, 0.62, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -166,7 +166,7 @@ export async function start() {
     H = innerHeight;
     phone = W <= 860;
     // wide screens have room: the Delhi landmarks stand further apart
-    const spread = phone ? 1 : 1.3;
+    const spread = phone ? 1.15 : 1.3;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
     applyRes();
     camera.aspect = W / H;
@@ -389,7 +389,14 @@ export async function start() {
       pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
     }
     tmp.subVectors(vP, vL).multiplyScalar(pull - 1); vP.add(tmp);
-    if (phone) { vP.y += 1.0; vL.y += 0.5; const h0 = clamp01(1 - tSmooth * 2); vL.x += 0.75 * h0; vP.x += 0.75 * h0; } // centre the Delhi group in a narrow frame
+    if (phone) {
+      vP.y += 1.0; vL.y += 0.5;
+      // hero on phones: look at Delhi head-on and from higher up, so the back row shows over the front one
+      const h0 = clamp01(1 - tSmooth * 2);
+      vL.x += (2.1 - vL.x) * h0;
+      vP.x += (vL.x + 1.2 - vP.x) * h0;
+      vP.y += 2.2 * h0;
+    }
     const fogK = Math.max(1, pull * 0.9);
     (scene.fog as THREE.Fog).near = 20 * fogK;
     (scene.fog as THREE.Fog).far = 52 * fogK;
@@ -454,7 +461,7 @@ export async function start() {
 
     // projects: the active one centre stage and turning; next ones wait right and back; passed ones sink away
     const pp = projectProgress(projEl);
-    const target = Math.max(0, Math.min(floaters.length - 1, pp * floaters.length - 0.5));
+    const target = phone ? Number(projEl.dataset.active || 0) : Math.max(0, Math.min(floaters.length - 1, pp * floaters.length - 0.5));
     projC += (target - projC) * damp(0.004);
     const rise = ease(clamp01((tSmooth - 1.25) / 0.6));
     for (const o of floaters) {

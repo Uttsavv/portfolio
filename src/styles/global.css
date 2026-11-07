@@ -204,24 +204,25 @@ footer a:hover { color: var(--ink); }
 /* ---------- phones and tablets: the world sits on top, text below on a solid fade ---------- */
 @media (max-width: 860px) {
   /* Phones: each section is a window onto the 3D scene (the band at its top) followed by its text on solid ground.
-     Sections flow one after another, so there is never an empty screen between them; only Projects stays pinned. */
+     Sections flow one after another, so there is never an empty screen between them. */
   .scrim { display: none; }
   .nav, .nav.solid { background: var(--bg); border-bottom-color: var(--line); }
-  #top, #work, #contact { height: auto; min-height: 0; }
-  #top .pin, #work .pin, #contact .pin {
+  #top, #work, #projects, #contact { height: auto; min-height: 0; }
+  #top .pin, #work .pin, #projects .pin, #contact .pin {
     position: relative; height: auto; min-height: 100vh; min-height: 100svh;
     flex-direction: column; justify-content: flex-end; align-items: stretch;
     padding-top: calc(var(--nav-h) + 42svh); --pb: var(--s-7); padding-bottom: var(--pb);
   }
   #top .pin { padding-top: calc(var(--nav-h) + 24svh); } /* the hero's text always fits one screen; its band takes the rest */
-  #top .pin, #projects .pin { --pb: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--pb); }
-  #projects .pin { align-items: flex-end; }
+  #top .pin { --pb: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--pb); }
   .panel { position: relative; isolation: isolate; }
   /* the text's ground: full-bleed, solid, with an eased fade on top so the model's foot dissolves into it */
   .panel::before {
     content: ""; position: absolute; z-index: -1; pointer-events: none;
-    left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: -110px; bottom: calc(-1 * var(--pb, 0px)); /* ends where its section ends, never over the next band */
-    background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0, rgba(10, 13, 20, .1) 18px, rgba(10, 13, 20, .32) 38px, rgba(10, 13, 20, .6) 58px, rgba(10, 13, 20, .84) 78px, rgba(10, 13, 20, .96) 96px, var(--bg) 110px);
+    left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: -110px; bottom: calc(-1 * var(--pb, 0px) - 100px);
+    /* eased fades at both ends: into the scene above, and out into the next section's scene below, so sections melt into each other */
+    background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0, rgba(10, 13, 20, .1) 18px, rgba(10, 13, 20, .32) 38px, rgba(10, 13, 20, .6) 58px, rgba(10, 13, 20, .84) 78px, rgba(10, 13, 20, .96) 96px, var(--bg) 110px,
+      var(--bg) calc(100% - 100px), rgba(10, 13, 20, .96) calc(100% - 86px), rgba(10, 13, 20, .84) calc(100% - 68px), rgba(10, 13, 20, .6) calc(100% - 50px), rgba(10, 13, 20, .32) calc(100% - 32px), rgba(10, 13, 20, .1) calc(100% - 14px), rgba(10, 13, 20, 0) 100%);
   }
   /* the text owns the full width under the scene: no narrow column with dead space beside it */
   .panel, .hero .panel { max-width: none; width: 100%; }

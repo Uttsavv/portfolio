@@ -458,7 +458,7 @@ def build(coll):
     j = jama_masjid(); j.location = (-1.0, 3.6, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (1.12, 1.12, 1.12); objs.append(j)
     g = india_gate(); g.location = (1.3, -0.3, 0); g.scale = (0.92, 0.92, 0.92); objs.append(g)
     lt = lotus_temple(); lt.location = (4.0, 0.6, 0); lt.scale = (1.25, 1.25, 1.25); objs.append(lt)
-    ht = humayun_tomb(); ht.location = (4.6, 4.2, 0); ht.scale = (1.2, 1.2, 1.2); objs.append(ht)
+    ht = humayun_tomb(); ht.location = (6.1, 3.2, 0); ht.rotation_euler = (0, 0, math.radians(-22)); ht.scale = (1.2, 1.2, 1.2); objs.append(ht)
     ar = auto_rickshaw(); ar.location = (-1.0, -1.9, 0); ar.rotation_euler = (0, 0, math.radians(-28)); ar.scale = (1.35, 1.35, 1.35); objs.append(ar)
     for o in objs:
         for c in o.users_collection:
