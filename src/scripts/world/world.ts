@@ -107,16 +107,29 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; hinge: THREE.Group; delay: number; base: THREE.Vector3; hit: number; th: number; om: number; ph: number }[] = [];
+  const pops: { pivot: THREE.Group; hinge: THREE.Group; axis: THREE.Vector3; spins: boolean; delay: number; base: THREE.Vector3; hit: number; th: number; om: number; ph: number }[] = [];
   // hinge: a group sitting on the ground at the piece's bottom back edge, the only thing a tap rotates; th/om: how far it has toppled (rad) and how fast;
   // ph: 0 standing, 1 falling, 2 lying flat, 3 springing back; hit: when it landed flat (s)
   const delhi = new THREE.Group();
   scene.add(delhi);
   [...delhiRoot.children].forEach((child) => {
-    // the piece's own footprint, relative to its origin: its hinge is the bottom back edge (lowest y, furthest from the camera)
+    // each piece falls into open ground, in the plane that suits it, never into a neighbour:
+    // the Qutub and the auto tip sideways to the left, the gateways and tombs backwards, the cart to the right; the lotus spins instead
+    const FALL: Record<string, [number, number]> = { qutub: [-1, 0], auto: [-1, 0], jamaMasjid: [0, -1], indiaGate: [0, -1], humayun: [0, -1], chaat: [1, 0] };
+    const spins = child.name === 'lotus';
+    const [dx, dz] = FALL[child.name] ?? [0, -1];
+    // its hinge is a whole bottom edge of its own footprint, in its own (yawed) frame, so that edge stays flat on the
+    // ground as it falls: measure it unrotated, pick the side facing closest to that direction, then turn it back
+    const pos = child.position.clone(), q = child.quaternion.clone();
+    child.position.set(0, 0, 0); child.quaternion.identity();
     child.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(child);
-    const edge = new THREE.Vector3(0, box.min.y - child.position.y, box.min.z - child.position.z);
+    child.position.copy(pos); child.quaternion.copy(q);
+    const local = new THREE.Vector3(dx, 0, dz).applyQuaternion(q.clone().invert());
+    const side = Math.abs(local.x) > Math.abs(local.z) ? new THREE.Vector3(Math.sign(local.x), 0, 0) : new THREE.Vector3(0, 0, Math.sign(local.z));
+    const c = box.getCenter(new THREE.Vector3()), hs = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    const edge = spins ? new THREE.Vector3(c.x, box.min.y, c.z).applyQuaternion(q) : new THREE.Vector3(c.x + side.x * hs.x, box.min.y, c.z + side.z * hs.z).applyQuaternion(q);
+    const axis = spins ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 1, 0).cross(side).applyQuaternion(q).normalize(); // up × side tips the top that way
     // pivot (load-in unfold + spread) > hinge (on that edge; topples) > inner (undoes the offset) > the piece
     const pivot = new THREE.Group(), hinge = new THREE.Group(), inner = new THREE.Group();
     pivot.position.copy(child.position);
@@ -129,7 +142,7 @@ export async function start() {
     delhi.add(pivot);
     const n = child.name;
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
-    pops.push({ pivot, hinge, delay, base: pivot.position.clone(), hit: -1, th: 0, om: 0, ph: 0 });
+    pops.push({ pivot, hinge, axis, spins, delay, base: pivot.position.clone(), hit: -1, th: 0, om: 0, ph: 0 });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
@@ -156,7 +169,7 @@ export async function start() {
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [1.26, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.26, 0.62, 0.62, 0.66];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -352,6 +365,7 @@ export async function start() {
     let o: THREE.Object3D | null = hit.object;
     while (o && o.parent !== delhi) o = o.parent;
     const p = pops.find((q) => q.pivot === o);
+    if (p && p.spins) { if (p.ph === 0) { p.ph = 4; p.th = 0; p.om = 7; dirty = true; } return; } // the lotus spins a full turn instead
     if (p && (p.ph === 0 || p.ph === 3)) { p.ph = 1; p.om = Math.max(p.om, 0) + 2.6; dirty = true; } // a push to start it tipping
   };
   addEventListener('pointerdown', (e) => {
@@ -432,7 +446,7 @@ export async function start() {
       const h3 = clamp01(tSmooth - 2);
       vL.x += (CX - 0.1 - vL.x) * h3;
       vP.x += (CX + 2.4 - vP.x) * h3;
-      vL.y -= 0.7 * h3;
+      vL.y -= 1.5 * h3;
     }
     const fogK = Math.max(1, pull * 0.9);
     (scene.fog as THREE.Fog).near = 20 * fogK;
@@ -486,7 +500,13 @@ export async function start() {
       if (p.ph !== 0) {
         const FLAT = (Math.PI / 2) * 0.94, G = 26, K = 70, C = 2 * 0.2 * Math.sqrt(K);
         for (let n = Math.max(1, Math.round(dt * 240)), h = dt / n; n > 0; n--) {
-          if (p.ph === 1) {
+          if (p.ph === 4) {
+            // spin: a spring pulling it round to a full turn, so it whirls up, overshoots a touch and settles back on its petals
+            const T = Math.PI * 2, KS = 26, CS = 2 * 0.32 * Math.sqrt(KS);
+            p.om += (-KS * (p.th - T) - CS * p.om) * h;
+            p.th += p.om * h;
+            if (Math.abs(p.th - T) < 1e-3 && Math.abs(p.om) < 1e-2) { p.th = 0; p.om = 0; p.ph = 0; }
+          } else if (p.ph === 1) {
             p.om += G * Math.sin(Math.max(p.th, 0.02)) * h;
             p.th += p.om * h;
             if (p.th >= FLAT) { p.th = FLAT; p.om = -p.om * 0.16; p.ph = 2; p.hit = nowS; }
@@ -503,7 +523,7 @@ export async function start() {
           }
         }
       }
-      p.hinge.rotation.x = -p.th; // backwards, away from you, about the ground edge
+      p.hinge.quaternion.setFromAxisAngle(p.axis, p.th); // over its ground edge, in its own direction
       p.pivot.rotation.x = rx;
       p.pivot.scale.setScalar(0.55 + 0.45 * Math.min(1, v));
     }
