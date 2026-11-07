@@ -198,21 +198,44 @@ footer a:hover { color: var(--ink); }
 
 /* ---------- phones and tablets: the world sits on top, text below on a solid fade ---------- */
 @media (max-width: 860px) {
-  /* an eased fade (many stops) so the model's foot dissolves into the page instead of a grey band */
-  .scrim { background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0%, rgba(10, 13, 20, 0) 38%, rgba(10, 13, 20, .08) 42%, rgba(10, 13, 20, .27) 46%, rgba(10, 13, 20, .52) 50%, rgba(10, 13, 20, .76) 54%, rgba(10, 13, 20, .93) 58%, var(--bg) 62%); }
-  .pin { align-items: flex-end; padding-bottom: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); }
-  .panel, .hero .panel { max-width: 560px; }
+  /* Phones: each section is a window onto the 3D scene (the band at its top) followed by its text on solid ground.
+     Sections flow one after another, so there is never an empty screen between them; only Projects stays pinned. */
+  .scrim { display: none; }
+  .nav, .nav.solid { background: var(--bg); border-bottom-color: var(--line); }
+  #top, #work, #contact { height: auto; min-height: 0; }
+  #top .pin, #work .pin, #contact .pin {
+    position: relative; height: auto; min-height: 100vh; min-height: 100svh;
+    flex-direction: column; justify-content: flex-end; align-items: stretch;
+    padding-top: calc(var(--nav-h) + 42svh); --pb: var(--s-7); padding-bottom: var(--pb);
+  }
+  #top .pin { padding-top: calc(var(--nav-h) + 24svh); } /* the hero's text always fits one screen; its band takes the rest */
+  #top .pin, #projects .pin { --pb: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--pb); }
+  #projects .pin { align-items: flex-end; }
+  .panel { position: relative; isolation: isolate; }
+  /* the text's ground: full-bleed, solid, with an eased fade on top so the model's foot dissolves into it */
+  .panel::before {
+    content: ""; position: absolute; z-index: -1; pointer-events: none;
+    left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); top: -110px; bottom: calc(-1 * var(--pb, 0px)); /* ends where its section ends, never over the next band */
+    background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0, rgba(10, 13, 20, .1) 18px, rgba(10, 13, 20, .32) 38px, rgba(10, 13, 20, .6) 58px, rgba(10, 13, 20, .84) 78px, rgba(10, 13, 20, .96) 96px, var(--bg) 110px);
+  }
+  /* the text owns the full width under the scene: no narrow column with dead space beside it */
+  .panel, .hero .panel { max-width: none; width: 100%; }
+  .hero h1 { font-size: min(21vw, 170px); line-height: .9; letter-spacing: -.05em; }
+  .hero .meta { font-size: clamp(19px, 5.2vw, 30px); }
+  .hero .actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+  .hero .actions .btn { width: 100%; }
+  .hero .actions .link { justify-content: center; min-height: 50px; border-radius: var(--r-pill); border: 1px solid rgba(233, 237, 243, .28); color: var(--ink); font-weight: 600; }
+  .hero .actions .link svg { color: var(--accent); }
   .jobs, .pshow, .form { margin-top: var(--s-5); }
   .job { padding: var(--s-3) 0; }
   .job p { font-size: 15.5px; }
-  .hero .meta { margin-top: 16px; }
+  .hero .meta { margin-top: 18px; }
   .pdesc { font-size: 16px; }
   .ptabs { margin-top: var(--s-4); }
   .actions { margin-top: var(--s-5); }
   .form { gap: var(--s-3); max-width: none; }
   .field textarea { min-height: 88px; }
   .cue { display: none; }
-  #contact { height: auto; min-height: 160vh; }
 }
 @media (max-width: 860px) and (max-height: 760px) {
   .field textarea { min-height: 64px; }

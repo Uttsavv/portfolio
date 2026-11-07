@@ -14,12 +14,20 @@ export const slideIndex = (p: number, count: number) => Math.min(count - 1, Math
  * Each section holds its scene for the middle of its pinned scroll; between holds t moves from i to i+1.
  * `local` is the 0..1 progress through the current hold.
  */
-export function sceneT(sections: HTMLElement[]) {
+export function sceneT(sections: HTMLElement[], flow = false) {
   const y = scrollY, vh = innerHeight;
-  const holds = sections.map((s, i) => {
-    const run = Math.max(1, s.offsetHeight - vh);
-    return [s.offsetTop + run * (i === 0 ? 0 : 0.2), s.offsetTop + run * 0.8];
-  });
+  // flow (phones): sections scroll by; a scene arrives while its section's top band slides up into view
+  const holds = flow
+    ? sections.map((s, i) => {
+        const next = sections[i + 1];
+        const a = i === 0 ? 0 : s.offsetTop - vh * 0.6;
+        const b = next ? next.offsetTop - vh : document.documentElement.scrollHeight - vh;
+        return [a, Math.max(a + 1, b)];
+      })
+    : sections.map((s, i) => {
+        const run = Math.max(1, s.offsetHeight - vh);
+        return [s.offsetTop + run * (i === 0 ? 0 : 0.2), s.offsetTop + run * 0.8];
+      });
   for (let i = 0; i < holds.length; i++) {
     const [a, b] = holds[i];
     if (y <= a) {
