@@ -114,8 +114,10 @@ export async function start() {
   scene.add(delhi);
   [...delhiRoot.children].forEach((child) => {
     // each piece falls into open ground, in the plane that suits it, never into a neighbour:
-    // the Qutub and the auto tip sideways to the left, the gateways and tombs backwards, the cart to the right; the lotus spins instead
-    const FALL: Record<string, [number, number]> = { qutub: [-1, 0], auto: [-1, 0], jamaMasjid: [0, -1], indiaGate: [0, -1], humayun: [0, -1], chaat: [1, 0] };
+    // the Qutub tips back-left along its own shadow (so it stays on screen), the auto sideways to the left,
+    // the gateways, tombs and the cart backwards; the lotus spins instead
+    const FALL: Record<string, [number, number]> = { qutub: [-0.35, -0.94], auto: [-1, 0], jamaMasjid: [0, -1], indiaGate: [0, -1], humayun: [0, -1], chaat: [0, -1] };
+    const round = child.name === 'qutub'; // a round base: its edge faces every way, so it can fall in any direction
     const spins = child.name === 'lotus';
     const [dx, dz] = FALL[child.name] ?? [0, -1];
     // its hinge is a whole bottom edge of its own footprint, in its own (yawed) frame, so that edge stays flat on the
@@ -126,8 +128,9 @@ export async function start() {
     const box = new THREE.Box3().setFromObject(child);
     child.position.copy(pos); child.quaternion.copy(q);
     const local = new THREE.Vector3(dx, 0, dz).applyQuaternion(q.clone().invert());
-    const side = Math.abs(local.x) > Math.abs(local.z) ? new THREE.Vector3(Math.sign(local.x), 0, 0) : new THREE.Vector3(0, 0, Math.sign(local.z));
+    const side = round ? local.clone().normalize() : Math.abs(local.x) > Math.abs(local.z) ? new THREE.Vector3(Math.sign(local.x), 0, 0) : new THREE.Vector3(0, 0, Math.sign(local.z));
     const c = box.getCenter(new THREE.Vector3()), hs = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    if (round) hs.x = hs.z = Math.max(hs.x, hs.z) * 0.92; // the base's rim, not the box corner
     const edge = spins ? new THREE.Vector3(c.x, box.min.y, c.z).applyQuaternion(q) : new THREE.Vector3(c.x + side.x * hs.x, box.min.y, c.z + side.z * hs.z).applyQuaternion(q);
     const axis = spins ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 1, 0).cross(side).applyQuaternion(q).normalize(); // up × side tips the top that way
     // pivot (load-in unfold + spread) > hinge (on that edge; topples) > inner (undoes the offset) > the piece
