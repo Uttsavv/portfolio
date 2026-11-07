@@ -189,6 +189,7 @@ export async function start() {
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
   const PHONE_FIT = [1.26, 0.62, 0.62, 0.66];
+  const HERO_Z = 0.85, HERO_W = 1.08, MOON_K = 1.35, MOON_Y = 9.6;
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -210,8 +211,13 @@ export async function start() {
     H = innerHeight;
     phone = W <= 860;
     // wide screens have room: the Delhi landmarks stand further apart
-    const spread = phone ? 1.4 : 1.3;
+    const spread = phone ? 1.3 : 1.3;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
+    // phones: a larger moon set higher, so it fills the sky between the nav and the landmarks
+    moon.scale.setScalar(phone ? MOON_K : 1);
+    moon.position.y = phone && H >= 760 ? MOON_Y : 8.4; // short phones keep it lower, clear of the nav
+    halo.scale.setScalar(7.5 * (phone ? MOON_K * 1.1 : 1));
+    halo.position.y = moon.position.y;
     applyRes();
     camera.aspect = W / H;
     camera.fov = phone ? 46 : 34;
@@ -450,6 +456,8 @@ export async function start() {
       // close up: the model fills the band and its foot sinks softly behind the text
       const band = Math.max(0.12, freeTop - 64 / H);
       pull = Math.min(2.4, Math.max(1.05, PHONE_FIT[Math.round(tSmooth)] / band));
+      // hero: closer in, but never so close that the row of landmarks spills off the sides
+      if (Math.round(tSmooth) === 0) pull = Math.max(HERO_W / (W / H), pull * HERO_Z);
     } else {
       pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
     }
