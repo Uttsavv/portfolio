@@ -7,8 +7,10 @@ import Contact from '../components/Contact.astro';
 import profile from '../data/profile.json';
 import jobs from '../data/experience.json';
 import projects from '../data/projects.json';
+import Icon from '../components/Icon.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const resume = profile.links.resume ? (/^https?:/.test(profile.links.resume) ? profile.links.resume : base + profile.links.resume) : '';
 // what the 3D world needs from the data files (labels and which model each project uses)
 const worldData = {
   models: `${base}/models/`,
@@ -26,6 +28,7 @@ const worldData = {
       <a class="brand" href="#top">{profile.name}</a>
       <nav class="links" aria-label="Sections">
         <a href="#work">Experience</a><a href="#projects">Projects</a><a href="#contact" class="keep">Contact</a>
+        {resume && <a class="nav-resume" href={resume} download><Icon name="down" />Resume</a>}
       </nav>
     </div>
   </header>

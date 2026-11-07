@@ -6,7 +6,8 @@ import profile from '../data/profile.json';
 interface Props { title?: string; description?: string; noindex?: boolean }
 const { title = profile.seo.title, description = profile.seo.description, noindex = false } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const path = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : Astro.url.pathname + '/';
+const canonical = new URL(path, Astro.site).href;
 const share = new URL(`${base}/share.jpg`, Astro.site).href;
 const person = {
   '@context': 'https://schema.org',
@@ -14,24 +15,25 @@ const person = {
   name: profile.name,
   jobTitle: profile.role,
   url: new URL(`${base}/`, Astro.site).href,
+  email: profile.email && !profile.email.endsWith('.example') ? profile.email : undefined,
   address: { '@type': 'PostalAddress', addressLocality: 'Delhi', addressCountry: 'IN' },
   knowsAbout: profile.stack,
   sameAs: [profile.links.github, profile.links.linkedin].filter(Boolean),
 };
 ---
 <!doctype html>
-<html lang="en" data-type="software">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="page-type" content="software" />
-    <meta name="site-kind" content="software" />
+    <script is:inline>document.documentElement.classList.add("js")</script>
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta name="theme-color" content="#0a0d14" />
     <meta name="color-scheme" content="dark" />
     <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
     <link rel="preload" href={fontUrl} as="font" type="font/woff2" crossorigin />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />

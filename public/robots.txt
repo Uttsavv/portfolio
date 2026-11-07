@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /portfolio/design-system/
+Sitemap: https://uttsavv.github.io/portfolio/sitemap.xml

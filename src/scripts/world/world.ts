@@ -43,7 +43,8 @@ export async function start() {
   scene.add(new THREE.HemisphereLight(0xc9d6e8, BG, 0.55));
   const key = new THREE.DirectionalLight(0xdfeaff, 2.2);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  const small = innerWidth <= 860;
+  key.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
   Object.assign(key.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: 1, far: 60 });
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
@@ -113,7 +114,7 @@ export async function start() {
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
     pops.push({ pivot, delay });
   });
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.0, 48, 24), new THREE.MeshStandardMaterial({ color: 0x3f9ee8, emissive: SKY, emissiveIntensity: 0.7, roughness: 0.9, toneMapped: false }));
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.0, 48, 24), new THREE.MeshStandardMaterial({ color: SKY, emissive: 0x1f6fb0, emissiveIntensity: 0.9, roughness: 0.85 }));
   moon.position.set(3.4, 8.2, -10.5);
   const moonLight = new THREE.PointLight(SKY, 3, 12, 2);
   moonLight.position.copy(moon.position);
@@ -223,7 +224,7 @@ export async function start() {
     const proj = new THREE.Group();
     proj.position.x = PX;
     scene.add(proj);
-    const SIZES: Record<string, number> = { handheld: 1.75, kanban: 1.35, jar: 1.85, terminal: 1.3 };
+    const SIZES: Record<string, number> = { handheld: 1.6, kanban: 1.3, jar: 1.6, terminal: 1.25 };
     data.projects.forEach((m, i) => {
       const src = node(projects, m);
       const obj = src.clone();
@@ -263,7 +264,19 @@ export async function start() {
     trail.frustumCulled = false;
     cont.add(trail);
   }
-  const rest = loadRest().catch((e) => console.error('scene load failed', e));
+  // the later scenes load once the visitor starts moving (or after a few idle seconds)
+  let rest: Promise<void> | null = null;
+  const loadLater = () => {
+    if (rest) return;
+    rest = loadRest().catch((e) => console.error('scene load failed', e));
+    removeEventListener('scroll', onFirstScroll);
+  };
+  const onFirstScroll = () => { if (scrollY > innerHeight * 0.15) loadLater(); };
+  addEventListener('scroll', onFirstScroll, { passive: true });
+  setTimeout(loadLater, 3500);
+  if (scrollY > innerHeight * 0.15) loadLater();
+  const panels = sections.map((s) => s.querySelector<HTMLElement>('.panel'));
+  let freeTop = 0.5, panelRight = 0.45; // smoothed layout of the text panel on screen
 
   /* ---------- loop ---------- */
   const clock = new THREE.Clock();
@@ -292,12 +305,31 @@ export async function start() {
     const u = (si + smoother(clamp01(sf))) / (KEYS.length - 1);
     camCurve.getPoint(clamp01(u), vP);
     lookCurve.getPoint(clamp01(u), vL);
-    if (phone) { tmp.subVectors(vP, vL).multiplyScalar(0.7); vP.add(tmp); vP.y += 1.4; vL.y += 0.6; }
+    // keep the scene clear of the text: read where the current panel actually is
+    const panel = panels[Math.max(0, Math.min(panels.length - 1, Math.round(tSmooth)))];
+    if (panel) {
+      const r = panel.getBoundingClientRect();
+      freeTop += (Math.max(0, r.top) / H - freeTop) * damp(0.02);
+      panelRight += (r.right / W - panelRight) * damp(0.02);
+    }
+    let pull = 1;
+    if (phone) {
+      // free band between the nav and the text; zoom out so the model fits inside it
+      const band = Math.max(0.12, freeTop - 64 / H);
+      pull = Math.min(3, Math.max(1.35, 0.5 / band));
+    } else {
+      pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
+    }
+    tmp.subVectors(vP, vL).multiplyScalar(pull - 1); vP.add(tmp);
+    if (phone) { vP.y += 1.0; vL.y += 0.5; }
+    const fogK = Math.max(1, pull * 0.9);
+    (scene.fog as THREE.Fog).near = 20 * fogK;
+    (scene.fog as THREE.Fog).far = 52 * fogK;
     // a slow swing round the subject while the experience and contact scenes hold
     lpS += (st.local - lpS) * damp(0.03);
     const near = Math.round(tSmooth);
     const swing = !reduce && (near === 1 || near === 3) && Math.abs(tSmooth - near) < 0.02;
-    angS = swing ? (lpS - 0.5) * 0.6 : angS * 0.96;
+    angS = swing ? (lpS - 0.5) * 0.3 : angS * 0.96;
     tmp.subVectors(vP, vL);
     const ca = Math.cos(angS), sa = Math.sin(angS);
     vP.set(vL.x + tmp.x * ca - tmp.z * sa, vP.y, vL.z + tmp.x * sa + tmp.z * ca);
@@ -306,8 +338,11 @@ export async function start() {
     camera.lookAt(vL);
     // shift the picture right on wide screens (text owns the left), up on phones (text owns the bottom)
     const i0 = Math.min(Math.floor(tSmooth), KEYS.length - 1), f = tSmooth - i0;
-    const off = phone ? 0 : KEYS[i0].off * (1 - f) + KEYS[Math.min(i0 + 1, KEYS.length - 1)].off * f;
-    camera.setViewOffset(W, H, -W * off, phone ? H * 0.24 : 0, W, H);
+    const keyOff = KEYS[i0].off * (1 - f) + KEYS[Math.min(i0 + 1, KEYS.length - 1)].off * f;
+    // centre the subject in the space right of the text panel (never less than the key's own offset)
+    const off = phone ? 0 : tSmooth < 0.5 ? keyOff : Math.max(keyOff, (panelRight + 1) / 2 - 0.5 + 0.01);
+    const centreY = (64 / H + freeTop) / 2; // middle of the free band above the text (phones)
+    camera.setViewOffset(W, H, -W * off, phone ? H * (0.5 - centreY) : 0, W, H);
 
     key.position.set(vL.x + 7, 12, vL.z + 8);
     key.target.position.copy(vL);
@@ -319,7 +354,8 @@ export async function start() {
       const v = spring(clamp01((intro - 0.4 - delay * 2.2) / 1.1));
       pivot.rotation.x = (1 - v) * -Math.PI / 2;
     }
-    delhi.visible = tSmooth < 0.85;
+    delhi.visible = tSmooth < 0.6;
+    moon.visible = !phone;
 
     // experience: blocks rise out of the floor one after another
     const pw = tSmooth - 0.25;
@@ -353,7 +389,7 @@ export async function start() {
       o.g.scale.setScalar(Math.max(0.001, sc));
       o.g.rotation.y = (reduce ? 0 : Math.sin(time * 0.5 + o.i) * 0.35 * k) + dist * -0.5 + (1 - rise) * 1.4;
       o.g.rotation.x = (1 - rise) * 0.5 + (reduce ? 0 : Math.sin(time * 0.4) * 0.05 * k);
-      o.g.visible = rise > 0.001 && dist > -0.45 && dist < 2.2 && tSmooth > 1.2 && tSmooth < 3.2;
+      o.g.visible = rise > 0.001 && dist > -0.45 && dist < 2.2 && tSmooth > 1.2 && tSmooth < 2.12;
     }
     if (cursor) cursor.visible = reduce || Math.floor(time * 1.6) % 2 === 0;
 
@@ -381,6 +417,8 @@ export async function start() {
       }
     }
 
+    // a phone with almost no room above the text shows the plain ground instead of a squeezed model
+    scene.visible = !phone || freeTop - 64 / H > 0.13;
     renderer.render(scene, camera);
     if (first) { first = false; canvas.classList.add('ready'); }
     requestAnimationFrame(frame);
@@ -390,5 +428,4 @@ export async function start() {
   const run = () => { if (!running && !document.hidden) { running = true; clock.getDelta(); requestAnimationFrame(frame); } };
   document.addEventListener('visibilitychange', () => { if (document.hidden) running = false; else run(); });
   run();
-  await rest;
 }
