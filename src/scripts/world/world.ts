@@ -107,7 +107,8 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3; hit: number }[] = []; // hit: when it was last knocked over (s), -1 = never
+  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3; hit: number; back: number }[] = []; // back: z of its bottom back edge (the hinge it topples over); hit: when it was last knocked over (s), -1 = never
+  let popSpread = 1;
   const delhi = new THREE.Group();
   scene.add(delhi);
   [...delhiRoot.children].forEach((child) => {
@@ -118,7 +119,9 @@ export async function start() {
     delhi.add(pivot);
     const n = child.name;
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
-    pops.push({ pivot, delay, base: pivot.position.clone(), hit: -1 });
+    pivot.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(child);
+    pops.push({ pivot, delay, base: pivot.position.clone(), hit: -1, back: box.min.z - pivot.position.z });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
@@ -168,6 +171,7 @@ export async function start() {
     phone = W <= 860;
     // wide screens have room: the Delhi landmarks stand further apart
     const spread = phone ? 1.4 : 1.3;
+    popSpread = spread;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
     applyRes();
     camera.aspect = W / H;
@@ -467,16 +471,19 @@ export async function start() {
     for (const p of pops) {
       const u = clamp01((intro - 0.15 - p.delay * 2.2) / 1.5);
       const v = softSpring(u);
-      let rx = (1 - v) * (Math.PI / 2) * 0.96;
+      let rx = (1 - v) * (Math.PI / 2) * 0.96, knock = 0;
       // knocked over by a tap: folds flat (like gravity), rests a beat, then springs upright with a bounce
       if (p.hit >= 0) {
         const k = nowS - p.hit;
         const fall = 0.32, rest = 0.18, back = 1.5;
         const a = k < fall ? (k / fall) ** 2 : k < fall + rest ? 1 : 1 - spring(clamp01((k - fall - rest) / back));
-        rx += a * (Math.PI / 2) * 0.94; // folds forward, the way it unfolded, so its underside never faces you
+        knock = -a * (Math.PI / 2) * 0.94; // falls backwards, away from you
         if (k > fall + rest + back) p.hit = -1;
       }
-      p.pivot.rotation.x = rx;
+      p.pivot.rotation.x = rx + knock;
+      // hinge the knock on the bottom back edge rather than the middle of the base
+      const hz = p.back * p.pivot.scale.x; // keep that edge where it is: shift the pivot by H - R·H
+      p.pivot.position.set(p.base.x * popSpread, p.base.y + Math.sin(knock) * hz, p.base.z * popSpread + hz - Math.cos(knock) * hz);
       p.pivot.scale.setScalar(0.55 + 0.45 * Math.min(1, v));
     }
     delhi.visible = tSmooth < 0.6;
