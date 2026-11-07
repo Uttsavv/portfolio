@@ -95,7 +95,7 @@ def qutub():
     parts.append(lathe("q_dome", [(0.15, zt + 0.29), (0.15, zt + 0.32), (0.13, zt + 0.38), (0.08, zt + 0.43), (0.03, zt + 0.455), (0.0, zt + 0.46)], 32, M("marble")))
     parts.append(lathe("q_fin", [(0.012, zt + 0.45), (0.025, zt + 0.48), (0.012, zt + 0.51), (0.004, zt + 0.56), (0.0, zt + 0.57)], 12, clay2))
     o = join("qutub", parts)
-    return shade(o, 30)
+    return shade(o, 50)
 
 
 # ------------------------------------------------------------ India Gate
@@ -128,22 +128,22 @@ def india_gate():
         for fy in (-1, 1):
             p = box("ig_rec", (0.42, 0.06, 0.95), (side * 1.07, fy * D / 2, 2.35), None)
             boolean(body, p)
-    bevel_mod(body, 0.012, 1)
+    bevel_mod(body, 0.035, 3)
     parts.append(body)
 
     # plinth steps
-    parts.append(box("ig_step0", (W + 0.7, D + 0.5, 0.1), (0, 0, 0.05), clay2, 0.01))
-    parts.append(box("ig_step1", (W + 0.4, D + 0.3, 0.1), (0, 0, 0.15), clay2, 0.01))
+    parts.append(box("ig_step0", (W + 0.7, D + 0.5, 0.1), (0, 0, 0.05), clay2, 0.03))
+    parts.append(box("ig_step1", (W + 0.4, D + 0.3, 0.1), (0, 0, 0.15), clay2, 0.03))
     # cornice stack
     z = Hb
     for w, d, h, m in [(W + 0.18, D + 0.16, 0.06, clay2), (W + 0.3, D + 0.26, 0.1, clay), (W + 0.22, D + 0.2, 0.05, clay2)]:
-        parts.append(box("ig_corn", (w, d, h), (0, 0, z + h / 2), m, 0.008))
+        parts.append(box("ig_corn", (w, d, h), (0, 0, z + h / 2), m, 0.02))
         z += h
     # attic with the inscription panel
     attic = box("ig_attic", (W - 0.1, D - 0.04, 0.42), (0, 0, z + 0.21), clay)
     for fy in (-1, 1):
         boolean(attic, box("ig_panel", (2.3, 0.04, 0.24), (0, fy * (D - 0.04) / 2, z + 0.21), None))
-    bevel_mod(attic, 0.01, 1)
+    bevel_mod(attic, 0.03, 3)
     parts.append(attic)
     for fy in (-1, 1):
         t = text_mesh("ig_text", "INDIA", 0.2, 0.012, marble)
@@ -153,7 +153,7 @@ def india_gate():
         parts.append(t)
     z += 0.42
     for w, d, h, m in [(W + 0.02, D + 0.06, 0.05, clay2), (2.55, 0.85, 0.2, clay), (2.62, 0.9, 0.04, clay2), (2.05, 0.72, 0.16, clay)]:
-        parts.append(box("ig_top", (w, d, h), (0, 0, z + h / 2), m, 0.006))
+        parts.append(box("ig_top", (w, d, h), (0, 0, z + h / 2), m, 0.02))
         z += h
     # shallow dome and the bowl on top
     parts.append(cylinder("ig_drum", 0.46, 0.08, (0, 0, z), 48, clay2))
@@ -163,7 +163,7 @@ def india_gate():
     parts.append(cylinder("ig_stem", 0.04, 0.06, (0, 0, z - 0.02), 16, clay2))
     parts.append(lathe("ig_bowl", [(0.03, z), (0.06, z + 0.03), (0.06, z + 0.06), (0.16, z + 0.09), (0.24, z + 0.15), (0.26, z + 0.18), (0.22, z + 0.18), (0.14, z + 0.13), (0.0, z + 0.12)], 40, marble, cap=False))
     o = join("indiaGate", parts)
-    return shade(o, 30)
+    return shade(o, 50)
 
 
 # ------------------------------------------------------------ Jama Masjid
@@ -176,7 +176,10 @@ def chhatri(prefix, r, h, loc, mats):
         th = TAU * b / 8
         p.append(cylinder(prefix + f"c{b}", r * 0.08, h * 0.42, (x + r * 0.85 * math.cos(th), y + r * 0.85 * math.sin(th), z + h * 0.08), 8, clay))
     z2 = z + h * 0.5
-    p.append(lathe(prefix + "eave", [(r * 1.25, z2), (r * 1.25, z2 + h * 0.04), (r * 0.95, z2 + h * 0.08)], 24, clay2))
+    eave = lathe(prefix + "eave", [(r * 1.25, z2), (r * 1.25, z2 + h * 0.04), (r * 0.95, z2 + h * 0.08)], 24, clay2)
+    eave.location = (x, y, 0)
+    apply_transform(eave)
+    p.append(eave)
     dome = lathe(prefix + "dome", [(a + 0, b) for a, b in onion_profile(r * 0.95, h * 0.45)], 24, marble)
     dome.location = (x, y, z2 + h * 0.08)
     apply_transform(dome)
@@ -215,7 +218,7 @@ def jama_masjid():
     mats = (clay, clay2, marble)
     parts = []
     # high plinth with a flight of steps at the front
-    parts.append(box("jm_plinth", (7.2, 2.2, 0.42), (0, 0, 0.21), clay2, 0.01))
+    parts.append(box("jm_plinth", (7.2, 2.2, 0.42), (0, 0, 0.21), clay2, 0.04))
     for i in range(5):
         parts.append(box(f"jm_st{i}", (1.6 - i * 0.12, 0.16, 0.084 * (i + 1)), (0, 1.1 + 0.16 * (4 - i) + 0.08, 0.042 * (i + 1)), clay2, 0.004))
     z0 = 0.42
@@ -228,7 +231,7 @@ def jama_masjid():
             c.location = (x, 0, z0)
             apply_transform(c)
             boolean(hall, c)
-    bevel_mod(hall, 0.008, 1)
+    bevel_mod(hall, 0.03, 3)
     parts.append(hall)
     # merlons along the parapet
     for k in range(-26, 27):
@@ -242,7 +245,7 @@ def jama_masjid():
     boolean(pish, c)
     frame = box("jm_frame", (1.1, 0.06, 1.42), (0, 0.86, z0 + 0.71), None)
     boolean(pish, frame)
-    bevel_mod(pish, 0.01, 1)
+    bevel_mod(pish, 0.03, 3)
     parts.append(pish)
     for side in (-1, 1):
         parts.append(cylinder(f"jm_turret{side}", 0.06, 1.9, (side * 0.77, 0.85, z0), 12, clay2))
@@ -270,7 +273,7 @@ def jama_masjid():
     for side in (-1, 1):
         parts += minaret(f"jm_min{side}", 3.6, (side * 3.25, 0.2, z0), mats, stripe)
     o = join("jamaMasjid", parts)
-    return shade(o, 30)
+    return shade(o, 50)
 
 
 # ------------------------------------------------------------ skyline
@@ -306,10 +309,10 @@ def skyline():
 
 def build(coll):
     objs = []
-    q = qutub(); q.location = (-3.3, -0.2, 0); objs.append(q)
-    g = india_gate(); g.location = (1.6, -0.4, 0); objs.append(g)
-    j = jama_masjid(); j.location = (-0.4, 4.4, 0); j.rotation_euler = (0, 0, math.pi); objs.append(j)
-    objs += skyline()
+    # overlapping like a pop-up book: Qutub front-left, India Gate front-right, Jama Masjid behind both
+    q = qutub(); q.location = (-2.7, -0.5, 0); objs.append(q)
+    g = india_gate(); g.location = (1.35, -0.1, 0); objs.append(g)
+    j = jama_masjid(); j.location = (-0.6, 3.1, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (1.12, 1.12, 1.12); objs.append(j)
     for o in objs:
         for c in o.users_collection:
             c.objects.unlink(o)

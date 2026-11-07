@@ -41,9 +41,18 @@ def flag():
     return [pole, cloth]
 
 
+def block(name, mat, top):
+    """A tall smooth block; the site sinks it into the floor so only its rounded top part shows."""
+    b = box(name, (2.3, 2.3, 6.0), (0, 0, -3.0 + 0.0), mat)
+    bevel_mod(b, 0.24, 8, 30)
+    o = join(name, [b])
+    return shade(o, 40)
+
+
 def build(coll):
-    objs = [slab("slab", MATS["clay"], MATS["clay2"]), slab("slabNow", MATS["blue"], MATS["glow"])]
-    objs[1].location = (3, 0, 0)
+    objs = [block("block", MATS["clay"], None), block("blockNow", MATS["blue"], None)]
+    objs[0].location = (-3, 0, 0)
+    objs[1].location = (0, 0, 0)
     objs += flag()
     for o in objs[2:]:
         o.location = (6, 0, 0)
