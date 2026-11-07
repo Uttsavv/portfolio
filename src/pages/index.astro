@@ -11,6 +11,8 @@ import Icon from '../components/Icon.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const resume = profile.links.resume ? (/^https?:/.test(profile.links.resume) ? profile.links.resume : base + profile.links.resume) : '';
+const [first, ...restParts] = profile.name.split(' ');
+const rest = restParts.join(' ');
 // what the 3D world needs from the data files (labels and which model each project uses)
 const worldData = {
   models: `${base}/models/`,
@@ -25,10 +27,10 @@ const worldData = {
   <div class="scrim" aria-hidden="true"></div>
   <header class="nav" id="nav">
     <div class="wrap">
-      <a class="brand" href="#top">{profile.name}</a>
+      <a class="brand" href="#top" aria-label={profile.name}><span>{first}</span><span class="last">&nbsp;{rest}</span></a>
       <nav class="links" aria-label="Sections">
-        <a href="#work">Experience</a><a href="#projects">Projects</a><a href="#contact" class="keep">Contact</a>
-        {resume && <a class="nav-resume" href={resume} download><Icon name="down" />Resume</a>}
+        <a href="#work">Experience</a><a href="#projects">Projects</a><a href="#contact">Contact</a>
+        {resume && <a class="nav-resume" href={resume} download><Icon name="down" /><span class="lbl">Resume</span></a>}
       </nav>
     </div>
   </header>

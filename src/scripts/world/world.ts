@@ -24,12 +24,15 @@ export async function start() {
   let reduce = reduceQ.matches;
   reduceQ.addEventListener('change', () => (reduce = reduceQ.matches));
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  // phones skip MSAA (their pixel ratio already smooths edges); everyone gets a pixel budget and adaptive resolution
+  const small = innerWidth <= 860;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, stencil: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.autoUpdate = false; // shadows are re-drawn only when something that casts one moves
   renderer.setClearColor(BG, 1);
 
   const scene = new THREE.Scene();
@@ -43,7 +46,7 @@ export async function start() {
   scene.add(new THREE.HemisphereLight(0xc9d6e8, BG, 0.55));
   const key = new THREE.DirectionalLight(0xdfeaff, 2.2);
   key.castShadow = true;
-  const small = innerWidth <= 860;
+  key.shadow.radius = 3;
   key.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
   Object.assign(key.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: 1, far: 60 });
   key.shadow.bias = -0.0004;
@@ -63,7 +66,8 @@ export async function start() {
     steel: std(0x8a95a8, 0.28, 0.85),
     glow: std(SKY, 0.4, 0, { emissive: SKY, emissiveIntensity: 1.5 }),
     blue: std(0x2a6fb8, 0.35, 0.2, { emissive: SKY, emissiveIntensity: 0.16 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0xdfeaf7, roughness: 0.06, metalness: 0, transmission: 0.94, thickness: 0.5, ior: 1.45, envMapIntensity: 0.8, side: THREE.DoubleSide }),
+    // see-through without transmission, which would render the whole scene a second time every frame
+    glass: std(0xdfeaf7, 0.08, 0, { transparent: true, opacity: 0.32, envMapIntensity: 1.2, depthWrite: false }),
     paper: std(0xd6e4f5, 0.62, 0, { side: THREE.DoubleSide }),
     paperShade: std(0xa9bdd8, 0.6, 0, { side: THREE.DoubleSide }),
     ink: std(0x2a3346, 0.5, 0),
@@ -78,13 +82,14 @@ export async function start() {
       m.material = Array.isArray(m.material) ? m.material.map(swap) : swap(m.material);
       m.castShadow = true;
       m.receiveShadow = true;
-      if ((m.material as THREE.Material).name === 'glass' || m.material === MATS.glass) m.castShadow = false;
+      if (m.material === MATS.glass) m.castShadow = false;
     });
     return root;
   }
 
   /* ---------- floor: satin, so the sky-blue rim light pools softly under each scene (the scrim keeps it off the text) ---------- */
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 140), new THREE.MeshStandardMaterial({ color: 0x080b12, roughness: 0.78, metalness: 0, envMapIntensity: 0.45 }));
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x080b12, roughness: 0.78, metalness: 0, envMapIntensity: 0.45 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.x = 50;
   floor.receiveShadow = true;
@@ -115,7 +120,7 @@ export async function start() {
     pops.push({ pivot, delay });
   });
   // the one glow: a bright sky-blue moon with a soft halo
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 48, 24), glowMat);
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
   moon.position.set(3.2, 8.4, -9.5);
   const haloTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -129,9 +134,7 @@ export async function start() {
   halo.scale.setScalar(7.5);
   halo.position.copy(moon.position).add(new THREE.Vector3(0, 0, -0.5));
   delhi.add(halo);
-  const moonLight = new THREE.PointLight(SKY, 3, 12, 2);
-  moonLight.position.copy(moon.position);
-  delhi.add(moon, moonLight);
+  delhi.add(moon);
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
@@ -140,23 +143,37 @@ export async function start() {
     { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
+  // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
+  const PHONE_FIT = [0.86, 0.62, 0.5, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
   const projEl = document.getElementById('projects')!;
 
   /* ---------- sizing ---------- */
-  let W = 0, H = 0, phone = false;
+  let W = 0, H = 0, phone = false, quality = 1;
+  const BUDGET = small ? 1.1e6 : 2.6e6; // most pixels we ever draw per frame
+  function applyRes() {
+    const cap = Math.min(devicePixelRatio, phone ? 1.5 : 1.5, Math.sqrt(BUDGET / (W * H)));
+    renderer.setPixelRatio(Math.max(0.75, cap * quality));
+    renderer.setSize(W, H, false);
+    dirty = true;
+  }
   function resize() {
+    // mobile browsers fire resize as their toolbars slide while scrolling; only a real change re-allocates the canvas
+    if (innerWidth === W && Math.abs(innerHeight - H) < 160) return;
     W = innerWidth;
     H = innerHeight;
     phone = W <= 860;
-    renderer.setPixelRatio(Math.min(devicePixelRatio, phone ? 1.5 : 1.75));
-    renderer.setSize(W, H, false);
+    // on a phone the camera looks down over a long stretch of floor; a matte floor keeps the rim light from drawing a band across it
+    floorMat.roughness = phone ? 1 : 0.78;
+    rim.intensity = phone ? 1.2 : 2.0;
+    applyRes();
     camera.aspect = W / H;
     camera.fov = phone ? 46 : 34;
     camera.updateProjectionMatrix();
   }
+  let dirty = true;
   addEventListener('resize', resize);
   resize();
 
@@ -274,6 +291,14 @@ export async function start() {
     trail.visible = false;
     trail.frustumCulled = false;
     cont.add(trail);
+    // things that move on their own don't cast shadows, so the shadow map can stay cached while they do
+    for (const o of [...floaters.map((f) => f.g), cloth, plane, letter, trail]) o?.traverse((m) => (m.castShadow = false));
+    // compile every material now, so the first scroll into a scene doesn't stall
+    const hidden: THREE.Object3D[] = [];
+    scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    try { renderer.compile(scene, camera); } catch { /* compiling early is only an optimisation */ }
+    hidden.forEach((o) => (o.visible = false));
+    dirty = true;
   }
   // the later scenes load once the visitor starts moving (or after a few idle seconds)
   let rest: Promise<void> | null = null;
@@ -298,12 +323,14 @@ export async function start() {
   let tSmooth = t, lpS = 0, angS = 0, projC = 0, intro = 0;
   const vP = new THREE.Vector3(), vL = new THREE.Vector3(), tmp = new THREE.Vector3(), tgt = new THREE.Vector3();
   let running = false, first = true;
+  const lastP = new THREE.Vector3(), lastL = new THREE.Vector3();
+  let lastT = -1, lastLp = -1, slow = 0, fast = 0, frames = 0;
 
   function frame() {
     if (!running) return;
-    const dt = Math.min(clock.getDelta(), 0.05);
+    const raw = clock.getDelta(), dt = Math.min(raw, 0.05);
     const time = clock.elapsedTime;
-    intro = reduce ? 10 : intro + dt;
+    intro = reduce ? 10 : intro + Math.min(raw, 0.25); // a slow device still finishes the pop-up on time
     const damp = (k: number) => (reduce ? 1 : 1 - Math.pow(k, dt));
     mx += (tmx - mx) * damp(0.05);
     my += (tmy - my) * damp(0.05);
@@ -326,13 +353,14 @@ export async function start() {
     let pull = 1;
     if (phone) {
       // free band between the nav and the text; zoom out so the model fits inside it
+      // close up: the model fills the band and its foot sinks softly behind the text
       const band = Math.max(0.12, freeTop - 64 / H);
-      pull = Math.min(3, Math.max(1.6, 0.55 / band));
+      pull = Math.min(2.4, Math.max(1.05, PHONE_FIT[Math.round(tSmooth)] / band));
     } else {
       pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
     }
     tmp.subVectors(vP, vL).multiplyScalar(pull - 1); vP.add(tmp);
-    if (phone) { vP.y += 1.0; vL.y += 0.5; }
+    if (phone) { vP.y += 1.0; vL.y += 0.5; const h0 = clamp01(1 - tSmooth * 2); vL.x += 0.7 * h0; vP.x += 0.7 * h0; } // centre the Delhi group in a narrow frame
     const fogK = Math.max(1, pull * 0.9);
     (scene.fog as THREE.Fog).near = 20 * fogK;
     (scene.fog as THREE.Fog).far = 52 * fogK;
@@ -344,7 +372,7 @@ export async function start() {
     tmp.subVectors(vP, vL);
     const ca = Math.cos(angS), sa = Math.sin(angS);
     vP.set(vL.x + tmp.x * ca - tmp.z * sa, vP.y, vL.z + tmp.x * sa + tmp.z * ca);
-    if (!reduce && !phone) { vP.x += Math.sin(time * 0.25) * 0.18 + mx * 0.9; vP.y += Math.sin(time * 0.31) * 0.1 - my * 0.5; }
+    if (!reduce && !phone) { vP.x += mx * 0.9; vP.y -= my * 0.5; }
     camera.position.copy(vP);
     camera.lookAt(vL);
     // shift the picture right on wide screens (text owns the left), up on phones (text owns the bottom)
@@ -352,13 +380,15 @@ export async function start() {
     const keyOff = KEYS[i0].off * (1 - f) + KEYS[Math.min(i0 + 1, KEYS.length - 1)].off * f;
     // centre the subject in the space right of the text panel (never less than the key's own offset)
     const off = phone ? 0 : tSmooth < 0.5 ? keyOff : Math.max(keyOff, (panelRight + 1) / 2 - 0.5 + 0.01);
-    const centreY = (64 / H + freeTop) / 2; // middle of the free band above the text (phones)
+    const centreY = (64 / H + freeTop) / 2 + 0.03; // middle of the free band above the text (phones)
     camera.setViewOffset(W, H, -W * off, phone ? H * (0.5 - centreY) : 0, W, H);
 
-    key.position.set(vL.x + 7, 12, vL.z + 8);
-    key.target.position.copy(vL);
-    rim.position.set(vL.x - 8, 6, vL.z - 10);
-    rim.target.position.copy(vL);
+    // the key light follows the scenes, not the mouse, so parallax never re-draws shadows
+    const lx = KEYS[0].l[0] + u * (KEYS[KEYS.length - 1].l[0] - KEYS[0].l[0]);
+    key.position.set(lx + 7, 12, 8);
+    key.target.position.set(lx, 1.5, 0);
+    rim.position.set(lx - 8, 6, -10);
+    rim.target.position.set(lx, 1.5, 0);
 
     // Delhi: pieces stand up like a pop-up book
     for (const { pivot, delay } of pops) {
@@ -429,8 +459,26 @@ export async function start() {
     }
 
     // a phone with almost no room above the text shows the plain ground instead of a squeezed model
-    scene.visible = !phone || freeTop - 64 / H > 0.13;
-    renderer.render(scene, camera);
+    const show = !phone || freeTop - 64 / H > 0.13;
+    if (show !== scene.visible) { scene.visible = show; dirty = true; }
+
+    // draw only when something on screen changed: an idle page costs nothing
+    const moving = floaters.some((o) => o.g.visible) || !!(plane && plane.visible) || !!(flag && blocks.some((b) => b.g.visible));
+    const shadowsMoved = intro < 3.5 || Math.abs(tSmooth - lastT) > 1e-5 || Math.abs(lpS - lastLp) > 1e-5;
+    const camMoved = vP.distanceToSquared(lastP) > 1e-8 || vL.distanceToSquared(lastL) > 1e-8;
+    if (dirty || moving || shadowsMoved || camMoved) {
+      if (shadowsMoved || dirty) renderer.shadowMap.needsUpdate = true;
+      renderer.render(scene, camera);
+      lastP.copy(vP); lastL.copy(vL); lastT = tSmooth; lastLp = lpS; dirty = false;
+      // adaptive resolution: drop the pixel ratio if frames run long, raise it again when there is headroom
+      frames++;
+      if (raw > 1 / 45) slow++; else if (raw < 1 / 58) fast++;
+      if (frames >= 45) {
+        if (slow > 15 && quality > 0.6) { quality -= 0.15; applyRes(); }
+        else if (fast > 42 && quality < 1) { quality = Math.min(1, quality + 0.1); applyRes(); }
+        frames = slow = fast = 0;
+      }
+    }
     if (first) { first = false; canvas.classList.add('ready'); }
     requestAnimationFrame(frame);
   }
