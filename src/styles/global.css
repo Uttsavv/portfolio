@@ -42,7 +42,7 @@ html.no-gl #world { display: none; }
 
 /* ---------- nav ---------- */
 .nav { position: fixed; left: 0; right: 0; top: 0; z-index: 40; padding-top: env(safe-area-inset-top, 0px); transition: background var(--d-med), border-color var(--d-med); border-bottom: 1px solid transparent; }
-.nav.solid { background: rgba(10, 13, 20, .72); backdrop-filter: saturate(1.5) blur(18px); -webkit-backdrop-filter: saturate(1.5) blur(18px); border-bottom-color: var(--line); }
+.nav.solid { background: rgba(10, 13, 20, .9); border-bottom-color: var(--line); } /* no backdrop blur: it re-blurs the 3D canvas every frame */
 .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: var(--nav-h); }
 .brand { font: 600 16px/1 var(--font); letter-spacing: -.01em; text-decoration: none; white-space: nowrap; min-height: 44px; display: flex; align-items: center; }
 .links { display: flex; gap: var(--s-1); align-items: center; }
@@ -198,8 +198,8 @@ footer a:hover { color: var(--ink); }
 
 /* ---------- phones and tablets: the world sits on top, text below on a solid fade ---------- */
 @media (max-width: 860px) {
-  .scrim { background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0%, rgba(10, 13, 20, 0) 34%, rgba(10, 13, 20, .9) 50%, var(--bg) 62%); }
-  .links a:not(.keep):not(.nav-resume) { display: none; }
+  /* an eased fade (many stops) so the model's foot dissolves into the page instead of a grey band */
+  .scrim { background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0%, rgba(10, 13, 20, 0) 38%, rgba(10, 13, 20, .08) 42%, rgba(10, 13, 20, .27) 46%, rgba(10, 13, 20, .52) 50%, rgba(10, 13, 20, .76) 54%, rgba(10, 13, 20, .93) 58%, var(--bg) 62%); }
   .pin { align-items: flex-end; padding-bottom: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); }
   .panel, .hero .panel { max-width: 560px; }
   .jobs, .pshow, .form { margin-top: var(--s-5); }
@@ -219,9 +219,16 @@ footer a:hover { color: var(--ink); }
   .form { gap: var(--s-2); }
   .reach { margin-top: var(--s-3); padding-top: var(--s-3); }
 }
+@media (max-width: 560px) {
+  .brand .last { display: none; }
+  .links { gap: 0; }
+  .links a { padding: 15px 7px; font-size: 14px; }
+  .links a::after { left: 7px; right: 7px; }
+  .links a.nav-resume { padding: 0; width: 38px; justify-content: center; margin-left: 6px; }
+  .links a.nav-resume .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-width: 340px) { .brand { display: none; } .nav .wrap { justify-content: center; } }
 @media (max-width: 480px) {
-  .links a { padding: 15px 8px; }
-  .links a.nav-resume { padding: 0 12px; margin-left: var(--s-1); }
   .hero .meta .stack { display: block; }
   .hero .meta .dot { display: none; }
   .form__foot .btn { width: 100%; }

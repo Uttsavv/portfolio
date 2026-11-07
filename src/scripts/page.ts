@@ -98,7 +98,8 @@ tabs.forEach((t, i) =>
   }),
 );
 
-addEventListener('scroll', () => { onScroll(); onProjects(); }, { passive: true });
+let scrollQueued = false; // one layout read per frame, not per scroll event
+addEventListener('scroll', () => { if (scrollQueued) return; scrollQueued = true; requestAnimationFrame(() => { scrollQueued = false; onScroll(); onProjects(); }); }, { passive: true });
 addEventListener('resize', onProjects);
 onScroll();
 onProjects();
