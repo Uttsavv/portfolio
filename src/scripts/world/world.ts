@@ -106,7 +106,7 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; delay: number }[] = [];
+  const pops: { pivot: THREE.Group; delay: number; base: THREE.Vector3 }[] = [];
   const delhi = new THREE.Group();
   scene.add(delhi);
   [...delhiRoot.children].forEach((child) => {
@@ -117,7 +117,7 @@ export async function start() {
     delhi.add(pivot);
     const n = child.name;
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
-    pops.push({ pivot, delay });
+    pops.push({ pivot, delay, base: pivot.position.clone() });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
@@ -138,7 +138,7 @@ export async function start() {
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
-    { p: [5.0, 3.9, 14.8], l: [0.8, 2.9, 0], off: 0.19 },
+    { p: [6.2, 3.8, 14.0], l: [1.7, 2.8, 0], off: 0.19 },
     { p: [WX + 7.5, 5.6, 20.5], l: [WX + 0.6, 1.7, 0.3], off: 0.24 },
     { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
@@ -165,6 +165,9 @@ export async function start() {
     W = innerWidth;
     H = innerHeight;
     phone = W <= 860;
+    // wide screens have room: the Delhi landmarks stand further apart
+    const spread = phone ? 1 : 1.3;
+    for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
     applyRes();
     camera.aspect = W / H;
     camera.fov = phone ? 46 : 34;
@@ -319,27 +322,28 @@ export async function start() {
     addEventListener('pointermove', (e) => { tmx = e.clientX / innerWidth - 0.5; tmy = e.clientY / innerHeight - 0.5; }, { passive: true });
 
   /* ---------- grab and turn: drag the scene (mouse or finger) to look around it ---------- */
-  let yawUser = 0, yawVel = 0, dragging = false, dragX = 0, dragT = 0, idleSince = 0;
+  let yawUser = 0, dragging = false, dragX = 0;
   const grabbable = (t: EventTarget | null) => {
     const el = t as HTMLElement | null;
     return !!el && !!el.closest?.('.pin') && !el.closest('.panel, a, button, input, textarea, label, form, .nav');
   };
   addEventListener('pointerdown', (e) => {
     if (!grabbable(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    dragging = true; dragX = e.clientX; dragT = performance.now(); yawVel = 0;
+    dragging = true; dragX = e.clientX;
     document.documentElement.classList.add('grabbing');
   });
   addEventListener('pointermove', (e) => {
     if (!dragging) return;
-    const now = performance.now(), dx = e.clientX - dragX;
+    const dx = e.clientX - dragX;
     const d = -dx * (5 / Math.max(360, innerWidth)); // a drag across the screen turns the scene well round; clamped to about ±63°
     yawUser = Math.max(-1.1, Math.min(1.1, yawUser + d));
-    yawVel = d / Math.max(0.008, (now - dragT) / 1000);
-    dragX = e.clientX; dragT = now;
+    dragX = e.clientX;
   }, { passive: true });
-  const endDrag = () => { if (!dragging) return; dragging = false; idleSince = performance.now(); document.documentElement.classList.remove('grabbing'); };
+  const endDrag = () => { if (!dragging) return; dragging = false; document.documentElement.classList.remove('grabbing'); };
   addEventListener('pointerup', endDrag);
   addEventListener('pointercancel', endDrag);
+  addEventListener('touchend', endDrag, { passive: true });
+  addEventListener('blur', endDrag);
   let { t } = sceneT(sections, innerWidth <= 860);
   let tSmooth = t, lpS = 0, angS = 0, projC = 0, intro = 0;
   const vP = new THREE.Vector3(), vL = new THREE.Vector3(), tmp = new THREE.Vector3(), tgt = new THREE.Vector3();
@@ -394,11 +398,9 @@ export async function start() {
     const near = Math.round(tSmooth);
     const swing = !reduce && (near === 1 || near === 3) && Math.abs(tSmooth - near) < 0.02;
     angS = swing ? (lpS - 0.5) * 0.3 : angS * 0.96;
-    // the visitor's own turn: a little momentum after letting go, then it drifts home after a few seconds
+    // the visitor's own turn: as soon as they let go it eases straight back to the composed view
     if (!dragging) {
-      yawUser = Math.max(-1.1, Math.min(1.1, yawUser + yawVel * dt));
-      yawVel *= Math.pow(0.02, dt);
-      if (performance.now() - idleSince > 3000) yawUser *= reduce ? 0 : Math.pow(0.35, dt);
+      yawUser *= reduce ? 0 : Math.pow(0.004, dt);
       if (Math.abs(yawUser) < 1e-4) yawUser = 0;
     }
     tmp.subVectors(vP, vL);
