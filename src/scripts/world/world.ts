@@ -144,7 +144,7 @@ export async function start() {
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [1.46, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.7, 0.62, 0.62, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -166,7 +166,7 @@ export async function start() {
     H = innerHeight;
     phone = W <= 860;
     // wide screens have room: the Delhi landmarks stand further apart
-    const spread = phone ? 1.15 : 1.3;
+    const spread = phone ? 1.4 : 1.3;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
     applyRes();
     camera.aspect = W / H;

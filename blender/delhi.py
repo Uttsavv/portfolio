@@ -247,16 +247,18 @@ def jama_masjid():
     boolean(pish, frame)
     bevel_mod(pish, 0.03, 3)
     parts.append(pish)
-    # the doorway at the back of the iwan, with a row of small arched windows above it
-    door = prism("jm_door", arch_points(0.44, 0.52, 0.3, 14), 0.33, 0.37, stripe)
+    # the gate, built onto the pishtaq's front face so it always shows: a marble frame,
+    # a deep dark pointed archway, and a row of small windows above it
+    fy = 0.85
+    parts.append(box("jm_gframe", (1.12, 0.04, 1.46), (0, fy + 0.02, z0 + 0.73), M("marble"), 0.01))
+    door = prism("jm_door", arch_points(0.78, 0.82, 0.3, 24), fy + 0.035, fy + 0.06, M("graphite"))
     door.location = (0, 0, z0)
     apply_transform(door)
     parts.append(door)
-    for k in (-1, 0, 1):
-        w = prism("jm_win", arch_points(0.1, 0.1, 0.25, 8), 0.33, 0.37, stripe)
-        w.location = (k * 0.2, 0, z0 + 0.86)
-        apply_transform(w)
-        parts.append(w)
+    inner = prism("jm_inner", arch_points(0.36, 0.42, 0.3, 14), fy + 0.055, fy + 0.07, stripe)
+    inner.location = (0, 0, z0)
+    apply_transform(inner)
+    parts.append(inner)
     for side in (-1, 1):
         parts.append(cylinder(f"jm_turret{side}", 0.06, 1.9, (side * 0.77, 0.85, z0), 12, clay2))
         parts += chhatri(f"jm_tch{side}", 0.09, 0.35, (side * 0.77, 0.85, z0 + 1.9), mats)
