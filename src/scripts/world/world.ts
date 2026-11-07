@@ -169,7 +169,7 @@ export async function start() {
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [1.26, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.26, 0.62, 0.62, 0.66];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -446,7 +446,7 @@ export async function start() {
       const h3 = clamp01(tSmooth - 2);
       vL.x += (CX - 0.1 - vL.x) * h3;
       vP.x += (CX + 2.4 - vP.x) * h3;
-      vL.y -= 0.7 * h3;
+      vL.y -= 1.5 * h3;
     }
     const fogK = Math.max(1, pull * 0.9);
     (scene.fog as THREE.Fog).near = 20 * fogK;
