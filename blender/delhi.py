@@ -247,6 +247,16 @@ def jama_masjid():
     boolean(pish, frame)
     bevel_mod(pish, 0.03, 3)
     parts.append(pish)
+    # the doorway at the back of the iwan, with a row of small arched windows above it
+    door = prism("jm_door", arch_points(0.44, 0.52, 0.3, 14), 0.33, 0.37, stripe)
+    door.location = (0, 0, z0)
+    apply_transform(door)
+    parts.append(door)
+    for k in (-1, 0, 1):
+        w = prism("jm_win", arch_points(0.1, 0.1, 0.25, 8), 0.33, 0.37, stripe)
+        w.location = (k * 0.2, 0, z0 + 0.86)
+        apply_transform(w)
+        parts.append(w)
     for side in (-1, 1):
         parts.append(cylinder(f"jm_turret{side}", 0.06, 1.9, (side * 0.77, 0.85, z0), 12, clay2))
         parts += chhatri(f"jm_tch{side}", 0.09, 0.35, (side * 0.77, 0.85, z0 + 1.9), mats)
@@ -402,6 +412,49 @@ def auto_rickshaw():
 
 
 
+# ------------------------------------------------------------ chaat stall
+
+def chaat_cart():
+    """A street-food cart: a wooden counter on two big wheels, a striped umbrella, pots and a lantern."""
+    clay, clay2, blue, rubber, steel, glow, dark, marble = M("clay"), M("clay2"), M("blue"), M("rubber"), M("steel"), M("glow"), M("clayDark"), M("marble")
+    parts = []
+    # cart body: a counter box with a lip, on a chassis
+    parts.append(box("cc_body", (1.3, 0.7, 0.42), (0, 0, 0.55), clay, 0.03))
+    parts.append(box("cc_top", (1.4, 0.8, 0.05), (0, 0, 0.785), clay2, 0.015))
+    parts.append(box("cc_panel", (1.1, 0.02, 0.24), (0, -0.36, 0.55), blue, 0.01))
+    # two big spoked wheels and a stand leg at the front
+    for x in (-0.38, 0.38):
+        w = cylinder("cc_wheel", 0.3, 0.05, (0, 0, -0.025), 28, rubber, bevel=0.015)
+        w.rotation_euler = (math.pi / 2, 0, 0)
+        w.location = (x, -0.39, 0.3)
+        parts.append(w)
+        hub = cylinder("cc_hub", 0.06, 0.07, (0, 0, -0.035), 12, steel)
+        hub.rotation_euler = (math.pi / 2, 0, 0)
+        hub.location = (x, -0.42, 0.3)
+        parts.append(hub)
+    for x in (-0.58, 0.58):
+        parts.append(cylinder("cc_leg", 0.025, 0.34, (x, 0.28, 0.0), 8, steel))
+    parts.append(cylinder("cc_handle", 0.02, 0.5, (0, 0, -0.25), 8, steel))
+    parts[-1].rotation_euler = (0, math.pi / 2, 0)
+    parts[-1].location = (0.95, 0.0, 0.72)
+    # pots and a stack of plates on the counter
+    for i, (x, r) in enumerate(((-0.42, 0.13), (-0.12, 0.11), (0.16, 0.12))):
+        parts.append(lathe(f"cc_pot{i}", [(0.0, 0.0), (r * 0.7, 0.0), (r, r * 0.5), (r * 0.9, r * 0.95), (r * 0.65, r * 1.15), (r * 0.7, r * 1.25), (0.0, r * 1.25)], 24, steel if i != 1 else dark))
+        parts[-1].location = (x, 0.05, 0.81)
+        apply_transform(parts[-1])
+    parts.append(cylinder("cc_plates", 0.12, 0.09, (0.44, -0.1, 0.81), 20, marble))
+    # umbrella on a pole, striped like the auto's hood
+    parts.append(cylinder("cc_pole", 0.02, 1.0, (0, 0.22, 0.81), 8, steel))
+    um = lathe("cc_umb", [(0.0, 0.32), (0.3, 0.27), (0.62, 0.14), (0.86, 0.0), (0.0, 0.0)], 16, blue)
+    um.location = (0, 0.22, 1.62)
+    apply_transform(um)
+    paint_faces(um, marble, lambda c, n: int(((math.atan2(c.y - 0.22, c.x) + math.pi) / TAU * 16)) % 2 == 0)
+    parts.append(um)
+    # a small lantern hanging under the umbrella
+    parts.append(sphere("cc_lamp", 0.06, (0.4, 0.22, 1.42), 12, 8, glow))
+    return join("chaat", parts)
+
+
 # ------------------------------------------------------------ Humayun's Tomb
 
 def humayun_tomb():
@@ -472,11 +525,12 @@ def build(coll):
     # a spread-out skyline so nothing hides: Qutub left, Jama Masjid behind the gap, India Gate centre-right,
     # the Lotus Temple and Humayun's Tomb filling the right, an auto-rickshaw parked in front
     q = qutub(); q.location = (-3.3, -0.2, 0); objs.append(q)
-    j = jama_masjid(); j.location = (-1.0, 3.6, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (1.12, 1.12, 1.12); objs.append(j)
+    j = jama_masjid(); j.location = (-1.0, 3.6, 0); j.rotation_euler = (0, 0, math.pi); j.scale = (0.95, 0.95, 0.95); objs.append(j)
     g = india_gate(); g.location = (1.3, -0.3, 0); g.scale = (0.92, 0.92, 0.92); objs.append(g)
     lt = lotus_temple(); lt.location = (4.0, 0.6, 0); lt.scale = (1.25, 1.25, 1.25); objs.append(lt)
-    ht = humayun_tomb(); ht.location = (6.1, 3.2, 0); ht.rotation_euler = (0, 0, math.radians(-22)); ht.scale = (1.2, 1.2, 1.2); objs.append(ht)
+    ht = humayun_tomb(); ht.location = (6.0, 3.4, 0); ht.rotation_euler = (0, 0, math.radians(-22)); ht.scale = (1.45, 1.45, 1.45); objs.append(ht)
     ar = auto_rickshaw(); ar.location = (-1.0, -1.9, 0); ar.rotation_euler = (0, 0, math.radians(-28)); ar.scale = (1.35, 1.35, 1.35); objs.append(ar)
+    cc = chaat_cart(); cc.location = (5.9, -1.5, 0); cc.rotation_euler = (0, 0, math.radians(-15)); cc.scale = (1.1, 1.1, 1.1); objs.append(cc)
     for o in objs:
         for c in o.users_collection:
             c.objects.unlink(o)
