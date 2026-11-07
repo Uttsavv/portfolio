@@ -1,0 +1,27 @@
+{
+  "name": "Utsav Singh",
+  "firstName": "Utsav",
+  "lastName": "Singh",
+  "role": "Full-stack engineer",
+  "experience": "2+ years experience",
+  "stack": [
+    "TypeScript",
+    "Python"
+  ],
+  "city": "Delhi, India",
+  "email": "hello@utsavsingh.example",
+  "links": {
+    "github": "https://github.com/Uttsavv",
+    "linkedin": "",
+    "resume": "/resume.pdf"
+  },
+  "contactForm": {
+    "endpoint": "",
+    "_comment": "Optional. A Formspree / Web3Forms style URL that accepts a JSON POST. Empty = the form opens the visitor's mail app addressed to `email`."
+  },
+  "seo": {
+    "title": "Utsav Singh · Full-stack engineer in Delhi",
+    "description": "Utsav Singh is a full-stack engineer in Delhi, India, with 2+ years of experience in TypeScript and Python."
+  },
+  "_placeholders": "email (.example stand-in), links.linkedin, public/resume.pdf (a stand-in with only name, role and GitHub)"
+}

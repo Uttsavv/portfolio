@@ -1,0 +1,23 @@
+---
+import profile from '../data/profile.json';
+import Icon from './Icon.astro';
+---
+<section class="scene hero" id="top" aria-labelledby="hero-title" data-enter>
+  <div class="pin">
+    <div class="wrap">
+      <div class="panel">
+        <p class="eyebrow">{profile.role}</p>
+        <h1 id="hero-title" tabindex="-1">{profile.firstName}<br /><span class="grad">{profile.lastName}.</span></h1>
+        <div class="meta">
+          <p><b>{profile.experience}</b> <span class="stack"><span class="dot" aria-hidden="true">· </span>{profile.stack.join(', ')}</span></p>
+          <p>Based in <b>{profile.city}</b></p>
+        </div>
+        <div class="actions">
+          <a class="btn" href="#work">See my work</a>
+          <a class="link" href="#contact"><span>Contact me</span><Icon name="chevron" /></a>
+        </div>
+      </div>
+    </div>
+    <span class="cue" id="cue" aria-hidden="true"></span>
+  </div>
+</section>

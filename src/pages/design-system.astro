@@ -1,0 +1,104 @@
+---
+// Living design system: every token and component as the site uses it. Not linked from the site; noindex.
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+
+const colours = [
+  ['--bg', '#0a0d14', 'Page, renderer clear colour, fog, scrims'],
+  ['--surface', '#131824', 'Form fields, panels'],
+  ['--ink', '#e9edf3', 'Headings, key facts, labels'],
+  ['--ink-2', '#c3ccda', 'Reading text'],
+  ['--muted', '#8891a1', 'Meta, dates, secondary words, placeholders'],
+  ['--accent', '#5ab9fc', 'Primary button, links, focus, the one 3D glow'],
+  ['--error', '#ff9a9a', 'Field errors'],
+];
+const type = [
+  ['Hero name (h1)', 'var(--t-hero)', 700, '-.045em', 'Utsav'],
+  ['Section (h2)', 'var(--t-h2)', 700, '-.04em', 'Experience'],
+  ['Project name (h3)', 'var(--t-h3)', 700, '-.035em', 'DevDex'],
+  ['Hero line', 'var(--t-lead)', 500, '-.015em', '2+ years experience'],
+  ['Reading text', 'var(--t-body)', 400, '0', 'Owned the checkout flow across web and API.'],
+  ['Meta and labels', 'var(--t-small)', 500, '0', '2024 – now'],
+];
+const space = [4, 8, 12, 16, 24, 32, 48, 64];
+---
+<Base title="Design system · Utsav Singh" description="Tokens and components of Utsav Singh's portfolio." noindex>
+  <main class="ds wrap">
+    <p class="eyebrow">Design system</p>
+    <h1 class="ds-title">Night and sky blue</h1>
+    <p class="ds-lead">One palette, one type family (Geist), one primary and one secondary button, one radius scale. Tokens live in <code>src/styles/tokens.css</code>; components in <code>src/styles/global.css</code>.</p>
+
+    <h2>Colour</h2>
+    <ul class="swatches">
+      {colours.map(([name, hex, use]) => (
+        <li><span class="chip" style={`background:${hex}`}></span><b>{name}</b><code>{hex}</code><span>{use}</span></li>
+      ))}
+    </ul>
+
+    <h2>Type</h2>
+    <ul class="types">
+      {type.map(([label, size, weight, track, sample]) => (
+        <li><span class="k">{label}</span><span style={`font-size:${size};font-weight:${weight};letter-spacing:${track};line-height:1.05`}>{sample}</span></li>
+      ))}
+    </ul>
+
+    <h2>Space and radius</h2>
+    <div class="spaces">{space.map((s) => <span><i style={`width:${s}px;height:${s}px`}></i>{s}</span>)}</div>
+    <div class="radii"><span style="border-radius:var(--r-sm)">8 focus</span><span style="border-radius:var(--r-md)">12 fields</span><span style="border-radius:var(--r-pill)">pill buttons, tags</span></div>
+
+    <h2>Actions</h2>
+    <div class="row">
+      <a class="btn" href="#">See my work</a>
+      <a class="btn2" href="#"><Icon name="down" /><span>Download resume</span></a>
+      <a class="icon-btn" href="#" aria-label="Icon button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="6" /></svg></a>
+      <a class="link" href="#"><span>Contact me</span><Icon name="chevron" /></a>
+      <a class="link out" href="#"><span>View on GitHub</span><Icon name="out" /></a>
+      <span class="tag">Now</span>
+    </div>
+
+    <h2>Form</h2>
+    <form class="form" onsubmit="return false">
+      <div class="field"><label for="ds-a">Your email</label><input id="ds-a" placeholder="you@company.com" /></div>
+      <div class="field"><label for="ds-b">With an error</label><input id="ds-b" aria-invalid="true" value="utsav" /><p class="field__error">Write an email address with an @, so I can reply.</p></div>
+    </form>
+
+    <h2>Lists</h2>
+    <ol class="jobs" style="max-width:500px">
+      <li class="job"><p class="role"><strong>Full-Stack Engineer</strong><span class="tag">Now</span></p><span class="when">2024 – now</span><p><span class="co">Company</span> · One line on what was done.</p></li>
+    </ol>
+
+    <h2>Motion</h2>
+    <ul class="notes">
+      <li>Ease out <code>cubic-bezier(.16, 1, .3, 1)</code> for slides and the hero entrance; ease in-out cubic for nav scrolling (800 ms + distance × .22, up to 2 s; a wheel, touch or key cancels it).</li>
+      <li>Hover 180 ms: buttons lift 2 px and press to .98; links draw an underline; icons nudge.</li>
+      <li>3D: scenes hold for the middle 60% of each section and glide between holds, damped. Reduced motion: no springs, orbit, drift or cue, instant jumps, all text visible.</li>
+      <li>Readability: a fixed shade darkens the left side on desktop and the lower half on phones, so text never sits on the 3D scene.</li>
+    </ul>
+  </main>
+</Base>
+
+<style>
+  .ds { padding-block: 72px 120px; }
+  .ds-title { font-size: clamp(44px, 6vw, 80px); }
+  .ds-lead { color: var(--ink-2); max-width: 40em; margin: 20px 0 0; }
+  .ds h2 { font-size: 28px; margin: 64px 0 20px; letter-spacing: -.02em; }
+  code { font: 500 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); }
+  .swatches { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .swatches li { display: grid; grid-template-columns: 44px 120px 90px 1fr; gap: 16px; align-items: center; color: var(--ink-2); }
+  .chip { width: 44px; height: 44px; border-radius: var(--r-md); border: 1px solid var(--line-strong); }
+  .types { list-style: none; padding: 0; margin: 0; display: grid; gap: 22px; }
+  .types li { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: baseline; }
+  .k { color: var(--muted); font-size: 14px; }
+  .spaces { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+  .spaces span { display: grid; justify-items: center; gap: 6px; }
+  .spaces i { background: var(--accent); border-radius: 2px; }
+  .radii { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  .radii span { border: 1px solid var(--line-strong); padding: 14px 18px; color: var(--ink-2); font-size: 14px; }
+  .row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .notes { color: var(--ink-2); max-width: 46em; display: grid; gap: 10px; padding-left: 18px; }
+  @media (max-width: 640px) {
+    .swatches li { grid-template-columns: 44px 1fr; }
+    .swatches li span:last-child, .swatches code { grid-column: 2; }
+    .types li { grid-template-columns: 1fr; gap: 6px; }
+  }
+</style>

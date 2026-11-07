@@ -1,0 +1,51 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import Experience from '../components/Experience.astro';
+import Projects from '../components/Projects.astro';
+import Contact from '../components/Contact.astro';
+import profile from '../data/profile.json';
+import jobs from '../data/experience.json';
+import projects from '../data/projects.json';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// what the 3D world needs from the data files (labels and which model each project uses)
+const worldData = {
+  models: `${base}/models/`,
+  // oldest first; a past job is labelled with the year it ended
+  years: [...jobs].reverse().map((j) => (j.end === null ? 'Now' : '’' + j.end.slice(-2))),
+  projects: projects.map((p) => p.model),
+};
+---
+<Base>
+  <a class="skip" href="#main">Skip to content</a>
+  <canvas id="world" aria-hidden="true"></canvas>
+  <div class="scrim" aria-hidden="true"></div>
+  <header class="nav" id="nav">
+    <div class="wrap">
+      <a class="brand" href="#top">{profile.name}</a>
+      <nav class="links" aria-label="Sections">
+        <a href="#work">Experience</a><a href="#projects">Projects</a><a href="#contact" class="keep">Contact</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" tabindex="-1">
+    <Hero />
+    <Experience />
+    <Projects />
+    <Contact />
+  </main>
+  <footer>
+    <div class="wrap">
+      <span>{profile.name} · {profile.city}</span>
+      <nav aria-label="Elsewhere">
+        <a href={profile.links.github} target="_blank" rel="noopener">GitHub</a>
+        {profile.links.linkedin && <a href={profile.links.linkedin} target="_blank" rel="noopener">LinkedIn</a>}
+      </nav>
+    </div>
+  </footer>
+  <script type="application/json" id="world-data" set:html={JSON.stringify(worldData)} />
+  <script>
+    import '../scripts/page';
+  </script>
+</Base>

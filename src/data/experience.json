@@ -1,0 +1,26 @@
+[
+  {
+    "role": "Full-Stack Engineer",
+    "company": "Brightforge",
+    "start": "2024",
+    "end": null,
+    "summary": "Leads a small team shipping the customer portal. Set up preview deploys for every pull request.",
+    "placeholder": true
+  },
+  {
+    "role": "Software Engineer",
+    "company": "Parcelwise",
+    "start": "2023",
+    "end": "2024",
+    "summary": "Owned the checkout flow across web and API. Moved order tracking to websockets.",
+    "placeholder": true
+  },
+  {
+    "role": "Software Engineer Intern",
+    "company": "Lumen Labs",
+    "start": "2023",
+    "end": "2023",
+    "summary": "Built internal dashboards for the support team.",
+    "placeholder": true
+  }
+]

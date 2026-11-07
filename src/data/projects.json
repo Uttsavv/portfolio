@@ -1,0 +1,38 @@
+[
+  {
+    "name": "DevDex",
+    "year": "2026",
+    "stack": ["Astro", "TypeScript"],
+    "description": "A portfolio styled as a handheld field device, with themed pages and synthesized sound.",
+    "url": "https://github.com/Uttsavv/portfolio",
+    "model": "handheld",
+    "placeholder": true
+  },
+  {
+    "name": "Relay Board",
+    "year": "2025",
+    "stack": ["Next.js", "PostgreSQL"],
+    "description": "Realtime kanban for small teams, with live presence and offline edits that sync back.",
+    "url": "https://github.com/Uttsavv",
+    "model": "kanban",
+    "placeholder": true
+  },
+  {
+    "name": "Pantry API",
+    "year": "2024",
+    "stack": ["Go", "Redis"],
+    "description": "Recipe and inventory API with fuzzy search and barcode lookup.",
+    "url": "https://github.com/Uttsavv",
+    "model": "jar",
+    "placeholder": true
+  },
+  {
+    "name": "Patchnote",
+    "year": "2023",
+    "stack": ["Rust", "GitHub Actions"],
+    "description": "A CLI that turns conventional commits into readable changelogs.",
+    "url": "https://github.com/Uttsavv",
+    "model": "terminal",
+    "placeholder": true
+  }
+]

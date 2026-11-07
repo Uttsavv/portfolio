@@ -1,0 +1,47 @@
+---
+import profile from '../data/profile.json';
+import Icon from './Icon.astro';
+import { siGithub } from 'simple-icons';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const resume = profile.links.resume ? (/^https?:/.test(profile.links.resume) ? profile.links.resume : base + profile.links.resume) : '';
+const mailto = profile.email ? `mailto:${profile.email}` : '';
+---
+<section class="scene" id="contact" aria-labelledby="contact-title">
+  <div class="pin">
+    <div class="wrap">
+      <div class="panel">
+        <h2 id="contact-title" tabindex="-1">Get in touch</h2>
+        <form class="form" id="cform" novalidate method="post"
+          action={profile.contactForm.endpoint || mailto || undefined}
+          data-endpoint={profile.contactForm.endpoint || undefined}
+          data-email={profile.email || undefined}>
+          <div class="field">
+            <label for="cf-email">Your email</label>
+            <input id="cf-email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required aria-describedby="cf-email-err" />
+            <p class="field__error" id="cf-email-err"></p>
+          </div>
+          <div class="field">
+            <label for="cf-msg">Message</label>
+            <textarea id="cf-msg" name="message" rows="3" placeholder="What are you building?" required aria-describedby="cf-msg-err"></textarea>
+            <p class="field__error" id="cf-msg-err"></p>
+          </div>
+          <div class="form__foot">
+            <button class="btn" type="submit">Send message<Icon name="arrow" /></button>
+            <p class="form__status" role="status" id="cf-status"></p>
+          </div>
+        </form>
+        <div class="reach">
+          {resume && <a class="btn2" href={resume} download><Icon name="down" /><span>Download resume</span></a>}
+          {profile.links.linkedin && (
+            <a class="icon-btn" href={profile.links.linkedin} target="_blank" rel="noopener" aria-label="LinkedIn (opens in a new tab)">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3 9.75h4V21H3V9.75Zm6.5 0h3.83v1.54h.05c.53-1 1.84-2.06 3.8-2.06 4.06 0 4.82 2.67 4.82 6.15V21h-4v-5c0-1.2-.02-2.73-1.66-2.73-1.67 0-1.92 1.3-1.92 2.64V21h-4V9.75Z" /></svg>
+            </a>
+          )}
+          <a class="icon-btn" href={profile.links.github} target="_blank" rel="noopener" aria-label="GitHub (opens in a new tab)">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={siGithub.path} /></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
