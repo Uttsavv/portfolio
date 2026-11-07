@@ -129,7 +129,23 @@ export async function start() {
     child.position.copy(pos); child.quaternion.copy(q);
     const local = new THREE.Vector3(dx, 0, dz).applyQuaternion(q.clone().invert());
     const side = round ? local.clone().normalize() : Math.abs(local.x) > Math.abs(local.z) ? new THREE.Vector3(Math.sign(local.x), 0, 0) : new THREE.Vector3(0, 0, Math.sign(local.z));
-    const c = box.getCenter(new THREE.Vector3()), hs = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    // the footprint is what actually touches the ground: only the vertices near the bottom count, so an umbrella,
+    // a handle or a canopy that overhangs the base can't put the hinge out in mid-air
+    const foot = new THREE.Box3(), v = new THREE.Vector3(), floorY = box.min.y + (box.max.y - box.min.y) * 0.08;
+    child.updateMatrixWorld(true);
+    child.position.set(0, 0, 0); child.quaternion.identity(); child.updateMatrixWorld(true);
+    child.traverse((o) => {
+      const m = o as THREE.Mesh;
+      const pa = m.isMesh ? (m.geometry.getAttribute('position') as THREE.BufferAttribute) : null;
+      if (!pa) return;
+      for (let i = 0; i < pa.count; i++) {
+        v.fromBufferAttribute(pa, i).applyMatrix4(m.matrixWorld);
+        if (v.y <= floorY) foot.expandByPoint(v);
+      }
+    });
+    child.position.copy(pos); child.quaternion.copy(q);
+    if (foot.isEmpty()) foot.copy(box);
+    const c = foot.getCenter(new THREE.Vector3()), hs = foot.getSize(new THREE.Vector3()).multiplyScalar(0.5);
     if (round) hs.x = hs.z = Math.max(hs.x, hs.z) * 0.92; // the base's rim, not the box corner
     const edge = spins ? new THREE.Vector3(c.x, box.min.y, c.z).applyQuaternion(q) : new THREE.Vector3(c.x + side.x * hs.x, box.min.y, c.z + side.z * hs.z).applyQuaternion(q);
     const axis = spins ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 1, 0).cross(side).applyQuaternion(q).normalize(); // up × side tips the top that way
