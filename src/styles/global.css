@@ -93,6 +93,11 @@ main { position: relative; z-index: 2; }
 .scene { position: relative; }
 .pin { position: sticky; top: 0; height: 100vh; height: 100svh; display: flex; align-items: center; padding-top: var(--nav-h); }
 .pin > .wrap { width: 100%; }
+/* the scene can be grabbed and turned; vertical swipes still scroll the page */
+.pin { cursor: grab; touch-action: pan-y; }
+.pin .panel { cursor: auto; }
+html.grabbing, html.grabbing .pin { cursor: grabbing; user-select: none; }
+html.no-gl .pin { cursor: auto; }
 .panel { max-width: 500px; min-width: 0; }
 #top { height: 150vh; }
 #work { height: 230vh; }
@@ -220,7 +225,13 @@ footer a:hover { color: var(--ink); }
   }
   /* the text owns the full width under the scene: no narrow column with dead space beside it */
   .panel, .hero .panel { max-width: none; width: 100%; }
-  .hero .actions { justify-content: flex-end; }
+  /* hero on phones: buttons stacked in the space right of the name */
+  .hero .panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-4); }
+  .hero .panel > .eyebrow, .hero .panel > .meta { grid-column: 1 / -1; }
+  .hero .panel > h1 { grid-column: 1; grid-row: 2; }
+  .hero .actions { grid-column: 2; grid-row: 2; align-self: center; margin-top: 0; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--s-3); }
+  .hero .actions .btn { padding: 0 22px; }
+  .hero .actions .link { justify-content: center; min-height: 44px; }
   .jobs, .pshow, .form { margin-top: var(--s-5); }
   .job { padding: var(--s-3) 0; }
   .job p { font-size: 15.5px; }
@@ -247,8 +258,6 @@ footer a:hover { color: var(--ink); }
 }
 @media (max-width: 340px) { .brand { display: none; } .nav .wrap { justify-content: center; } }
 @media (max-width: 480px) {
-  .hero .meta .stack { display: block; }
-  .hero .meta .dot { display: none; }
   .form__foot .btn { width: 100%; }
 }
 

@@ -138,13 +138,13 @@ export async function start() {
 
   /* ---------- camera path: one key per section ---------- */
   const KEYS = [
-    { p: [3.6, 3.9, 13.8], l: [-0.5, 2.9, 0], off: 0.19 },
+    { p: [5.0, 3.9, 14.8], l: [0.8, 2.9, 0], off: 0.19 },
     { p: [WX + 7.5, 5.6, 20.5], l: [WX + 0.6, 1.7, 0.3], off: 0.24 },
     { p: [PX + 2.6, 3.4, 10.8], l: [PX, 2.4, 0], off: 0.13 },
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
-  const PHONE_FIT = [0.95, 0.62, 0.62, 0.56];
+  const PHONE_FIT = [1.25, 0.62, 0.62, 0.56];
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -317,6 +317,29 @@ export async function start() {
   let mx = 0, my = 0, tmx = 0, tmy = 0;
   if (matchMedia('(pointer: fine)').matches)
     addEventListener('pointermove', (e) => { tmx = e.clientX / innerWidth - 0.5; tmy = e.clientY / innerHeight - 0.5; }, { passive: true });
+
+  /* ---------- grab and turn: drag the scene (mouse or finger) to look around it ---------- */
+  let yawUser = 0, yawVel = 0, dragging = false, dragX = 0, dragT = 0, idleSince = 0;
+  const grabbable = (t: EventTarget | null) => {
+    const el = t as HTMLElement | null;
+    return !!el && !!el.closest?.('.pin') && !el.closest('.panel, a, button, input, textarea, label, form, .nav');
+  };
+  addEventListener('pointerdown', (e) => {
+    if (!grabbable(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    dragging = true; dragX = e.clientX; dragT = performance.now(); yawVel = 0;
+    document.documentElement.classList.add('grabbing');
+  });
+  addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const now = performance.now(), dx = e.clientX - dragX;
+    const d = -dx * (5 / Math.max(360, innerWidth)); // a drag across the screen turns the scene well round; clamped to about ±63°
+    yawUser = Math.max(-1.1, Math.min(1.1, yawUser + d));
+    yawVel = d / Math.max(0.008, (now - dragT) / 1000);
+    dragX = e.clientX; dragT = now;
+  }, { passive: true });
+  const endDrag = () => { if (!dragging) return; dragging = false; idleSince = performance.now(); document.documentElement.classList.remove('grabbing'); };
+  addEventListener('pointerup', endDrag);
+  addEventListener('pointercancel', endDrag);
   let { t } = sceneT(sections, innerWidth <= 860);
   let tSmooth = t, lpS = 0, angS = 0, projC = 0, intro = 0;
   const vP = new THREE.Vector3(), vL = new THREE.Vector3(), tmp = new THREE.Vector3(), tgt = new THREE.Vector3();
@@ -362,7 +385,7 @@ export async function start() {
       pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
     }
     tmp.subVectors(vP, vL).multiplyScalar(pull - 1); vP.add(tmp);
-    if (phone) { vP.y += 1.0; vL.y += 0.5; const h0 = clamp01(1 - tSmooth * 2); vL.x += 0.7 * h0; vP.x += 0.7 * h0; } // centre the Delhi group in a narrow frame
+    if (phone) { vP.y += 1.0; vL.y += 0.5; const h0 = clamp01(1 - tSmooth * 2); vL.x += 0.75 * h0; vP.x += 0.75 * h0; } // centre the Delhi group in a narrow frame
     const fogK = Math.max(1, pull * 0.9);
     (scene.fog as THREE.Fog).near = 20 * fogK;
     (scene.fog as THREE.Fog).far = 52 * fogK;
@@ -371,8 +394,15 @@ export async function start() {
     const near = Math.round(tSmooth);
     const swing = !reduce && (near === 1 || near === 3) && Math.abs(tSmooth - near) < 0.02;
     angS = swing ? (lpS - 0.5) * 0.3 : angS * 0.96;
+    // the visitor's own turn: a little momentum after letting go, then it drifts home after a few seconds
+    if (!dragging) {
+      yawUser = Math.max(-1.1, Math.min(1.1, yawUser + yawVel * dt));
+      yawVel *= Math.pow(0.02, dt);
+      if (performance.now() - idleSince > 3000) yawUser *= reduce ? 0 : Math.pow(0.35, dt);
+      if (Math.abs(yawUser) < 1e-4) yawUser = 0;
+    }
     tmp.subVectors(vP, vL);
-    const ca = Math.cos(angS), sa = Math.sin(angS);
+    const ca = Math.cos(angS + yawUser), sa = Math.sin(angS + yawUser);
     vP.set(vL.x + tmp.x * ca - tmp.z * sa, vP.y, vL.z + tmp.x * sa + tmp.z * ca);
     if (!reduce && !phone) { vP.x += mx * 0.9; vP.y -= my * 0.5; }
     camera.position.copy(vP);
@@ -390,7 +420,8 @@ export async function start() {
     const lx = KEYS[0].l[0] + u * (KEYS[KEYS.length - 1].l[0] - KEYS[0].l[0]);
     key.position.set(lx + 7, 12, 8);
     key.target.position.set(lx, 1.5, 0);
-    rim.position.set(lx - 8, 6, -10);
+    // phones: rim straight behind, so its glow pools under the model instead of a band from the left edge
+    rim.position.set(phone ? lx + 1 : lx - 8, 6, -10);
     rim.target.position.set(lx, 1.5, 0);
 
     // Delhi: pieces stand up like a pop-up book
@@ -399,7 +430,7 @@ export async function start() {
       pivot.rotation.x = (1 - v) * -Math.PI / 2;
     }
     delhi.visible = tSmooth < 0.6;
-    moon.visible = halo.visible = !phone;
+    moon.visible = halo.visible = true; // on phones the moon fills the sky above the model
 
     // experience: blocks rise out of the floor one after another
     const pw = tSmooth - 0.25;
