@@ -243,18 +243,21 @@ footer a:hover { color: var(--ink); }
   .actions { margin-top: var(--s-5); }
   .form { gap: var(--s-3); max-width: none; }
   .field textarea { min-height: 88px; }
-  /* phones: a quiet cue in the space under the name; a hairline with a small sky-blue light drifting down it */
+  /* phones: a quiet cue in the space under the name: a small, faint white "Scroll" over a thin chevron, breathing slowly */
   .cue {
-    display: block; bottom: calc(var(--s-5) + env(safe-area-inset-bottom, 0px)); width: 2px; height: 46px; border: 0; border-radius: 1px;
-    background: linear-gradient(180deg, rgba(233, 237, 243, 0), rgba(233, 237, 243, .22) 35%, rgba(233, 237, 243, .22) 65%, rgba(233, 237, 243, 0));
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    bottom: calc(var(--s-6) + env(safe-area-inset-bottom, 0px)); width: auto; height: auto; border: 0; border-radius: 0;
+    font: 500 11px/1 var(--font); letter-spacing: .14em; text-transform: uppercase; color: rgba(233, 237, 243, .38);
+    transition: opacity var(--d-med); /* fades out on scroll (page.ts sets its opacity) */
   }
+  .cue::before { content: "Scroll"; animation: cue-breathe 3.2s ease-in-out infinite; }
   .cue::after {
-    top: -2px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%;
-    background: var(--accent); box-shadow: 0 0 10px 2px rgba(90, 185, 252, .55);
-    animation: cue-drop 2.6s cubic-bezier(.45, 0, .25, 1) infinite;
+    position: static; margin: 0; width: 7px; height: 7px; border-radius: 0; background: none;
+    border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg);
+    animation: cue-breathe 3.2s ease-in-out infinite;
   }
 }
-@keyframes cue-drop { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(42px); opacity: 0; } }
+@keyframes cue-breathe { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 @media (max-width: 860px) and (max-height: 600px) { .cue { display: none; } }
 @media (max-width: 860px) and (max-height: 760px) {
   .field textarea { min-height: 64px; }
