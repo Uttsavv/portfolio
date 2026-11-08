@@ -231,11 +231,11 @@ footer a:hover { color: var(--ink); }
     background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0, rgba(10, 13, 20, .1) 18px, rgba(10, 13, 20, .32) 38px, rgba(10, 13, 20, .6) 58px, rgba(10, 13, 20, .84) 78px, rgba(10, 13, 20, .96) 96px, var(--bg) 110px,
       var(--bg) calc(100% - 100px), rgba(10, 13, 20, .96) calc(100% - 86px), rgba(10, 13, 20, .84) calc(100% - 68px), rgba(10, 13, 20, .6) calc(100% - 50px), rgba(10, 13, 20, .32) calc(100% - 32px), rgba(10, 13, 20, .1) calc(100% - 14px), rgba(10, 13, 20, 0) 100%);
   }
-  /* hero: the moonlit floor carries on down behind the name, fading slowly, instead of stopping at a dark wall */
+  /* hero: the moonlit floor carries on down behind the name and fades out to night through it, instead of stopping at a dark wall */
   #top .panel::before {
     top: -60px;
-    background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0, rgba(10, 13, 20, .18) 25%, rgba(10, 13, 20, .42) 55%, rgba(10, 13, 20, .62) 80%,
-      rgba(10, 13, 20, .78) calc(100% - 100px), rgba(10, 13, 20, .5) calc(100% - 50px), rgba(10, 13, 20, 0) 100%);
+    background: linear-gradient(180deg, rgba(10, 13, 20, 0) 0, rgba(10, 13, 20, .22) 12%, rgba(10, 13, 20, .5) 26%, rgba(10, 13, 20, .74) 40%,
+      rgba(10, 13, 20, .9) 55%, rgba(10, 13, 20, .97) 70%, var(--bg) calc(100% - 100px), rgba(10, 13, 20, .6) calc(100% - 50px), rgba(10, 13, 20, 0) 100%);
   }
   /* the text owns the full width under the scene: no narrow column with dead space beside it */
   .panel, .hero .panel { max-width: none; width: 100%; }
