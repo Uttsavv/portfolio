@@ -1,5 +1,5 @@
 // Page behaviour that works without WebGL: nav state, smooth section jumps, the project showcase and the form.
-import { projectProgress, slideIndex } from './scroll';
+import { projectProgress, slideIndex, STACK } from './scroll';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 const nav = document.getElementById('nav')!;
@@ -26,7 +26,7 @@ const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x 
 
 function sectionY(el: HTMLElement) {
   if (el.id === 'top') return 0;
-  if (innerWidth <= 860) return el.offsetTop; // phones: sections flow, land on the scene band
+  if (matchMedia(STACK).matches) return el.offsetTop; // phones: sections flow, land on the scene band
   const run = Math.max(0, el.offsetHeight - innerHeight);
   return el.offsetTop + run * 0.22;
 }
@@ -76,7 +76,7 @@ const bars = tabs.map((t) => t.querySelector('b')!);
 const count = slides.length;
 let activeSlide = 0;
 // phones: projects are a tap/swipe carousel; wide screens: scroll drives them through a pinned stretch
-const flowQ = matchMedia('(max-width: 860px)');
+const flowQ = matchMedia(STACK);
 
 function setSlide(a: number) {
   activeSlide = a;

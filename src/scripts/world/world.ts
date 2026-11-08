@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { projectProgress, sceneT } from '../scroll';
+import { projectProgress, sceneT, STACK } from '../scroll';
 
 type WorldData = { models: string; v?: string; years: string[]; projects: string[] };
 
@@ -166,7 +166,8 @@ export async function start() {
     pops.push({ pivot, hinge, axis, spins, delay, base: pivot.position.clone(), hit: -1, th: 0, om: 0, ph: 0 });
   });
   // the one glow: a bright sky-blue moon with a soft halo
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), glowMat);
+  const moonMat = glowMat.clone(); moonMat.fog = false; // the moon stays bright through the night haze
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 16), moonMat);
   moon.position.set(3.2, 8.4, -9.5);
   const haloTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 256;
@@ -190,6 +191,8 @@ export async function start() {
     { p: [CX + 5, 5.2, 14.5], l: [CX + 0.6, 2.2, 0], off: 0.26 },
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
+  const PH_FOG = [1.0, 1.75]; // phone hero fog, as multiples of the camera's distance to Delhi
+  const FIT_W = 1.1; // desktop: how wide the Delhi row is, relative to the free space (bigger = smaller row)
   const PHONE_FIT = [1.26, 0.62, 0.62, 0.66];
   const HERO_Z = 0.85, HERO_W = 1.08, MOON_K = 0.9, MOON_Y = 9.6;
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
@@ -211,7 +214,7 @@ export async function start() {
     if (innerWidth === W && Math.abs(innerHeight - H) < 160) return;
     W = innerWidth;
     H = innerHeight;
-    phone = W <= 860;
+    phone = matchMedia(STACK).matches;
     // wide screens have room: the Delhi landmarks stand further apart
     const spread = phone ? 1.3 : 1.3;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
@@ -377,7 +380,8 @@ export async function start() {
   let yawUser = 0, dragging = false, dragX = 0;
   const grabbable = (t: EventTarget | null) => {
     const el = t as HTMLElement | null;
-    return !!el && !!el.closest?.('.pin') && !el.closest('.panel, a, button, input, textarea, label, form, .nav');
+    // the text panel's empty space passes through to the scene; only its words and controls keep the pointer
+    return !!el && !!el.closest?.('.pin') && !el.closest('a, button, input, textarea, label, form, .nav, h1, h2, h3, p, li, dt, dd');
   };
   // a tap (short press, no movement) on a Delhi piece knocks it flat; it springs back up on its own
   let downX = 0, downY = 0, downT = 0, travel = 0;
@@ -417,7 +421,7 @@ export async function start() {
   addEventListener('pointercancel', endDrag);
   addEventListener('touchend', endDrag, { passive: true });
   addEventListener('blur', endDrag);
-  let { t } = sceneT(sections, innerWidth <= 860);
+  let { t } = sceneT(sections, matchMedia(STACK).matches);
   let tSmooth = t, lpS = 0, angS = 0, projC = 0, intro = 0;
   const vP = new THREE.Vector3(), vL = new THREE.Vector3(), tmp = new THREE.Vector3(), tgt = new THREE.Vector3();
   let running = false, first = true;
@@ -461,7 +465,10 @@ export async function start() {
       // hero: closer in, but never so close that the row of landmarks spills off the sides
       if (Math.round(tSmooth) === 0) pull = Math.max(HERO_W / (W / H), pull * HERO_Z);
     } else {
-      pull = Math.min(1.8, Math.max(1, 0.62 / Math.max(0.3, 1 - panelRight - 0.04)));
+      // the scene sits in the space right of the text: fit it to that space's height, and to its width too,
+      // so tall or narrow windows pull back instead of pushing Qutub behind the words and the tomb off the edge
+      const free = Math.max(0.3, 1 - panelRight - 0.07);
+      pull = Math.min(2.6, Math.max(1, 0.62 / free, FIT_W / ((W / H) * free)));
     }
     tmp.subVectors(vP, vL).multiplyScalar(pull - 1); vP.add(tmp);
     if (phone) {
@@ -478,8 +485,16 @@ export async function start() {
       vL.y -= 1.5 * h3;
     }
     const fogK = Math.max(1, pull * 0.9);
-    (scene.fog as THREE.Fog).near = 20 * fogK;
-    (scene.fog as THREE.Fog).far = 52 * fogK;
+    let fNear = 20 * fogK, fFar = 52 * fogK;
+    if (phone) {
+      // phone hero: the floor fades to night just behind the landmarks, so the moonlit blue pools around them
+      // instead of running as a flat band to a hard horizon
+      const hp = clamp01(1 - tSmooth * 2), dist = vP.distanceTo(vL);
+      fNear += (dist * PH_FOG[0] - fNear) * hp;
+      fFar += (dist * PH_FOG[1] - fFar) * hp;
+    }
+    (scene.fog as THREE.Fog).near = fNear;
+    (scene.fog as THREE.Fog).far = fFar;
     // a slow swing round the subject while the experience and contact scenes hold
     lpS += (st.local - lpS) * damp(0.03);
     const near = Math.round(tSmooth);

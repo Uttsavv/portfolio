@@ -202,8 +202,13 @@ footer a { text-decoration: none; min-height: 44px; display: inline-flex; align-
 footer a:hover { color: var(--ink); }
 
 /* ---------- phones and tablets: the world sits on top, text below on a solid fade ---------- */
-@media (max-width: 860px) {
-  /* Phones: each section is a window onto the 3D scene (the band at its top) followed by its text on solid ground.
+/* very wide screens: the page widens with the window, so the text sits out to the left and the scene has the room on the right */
+@media (min-width: 1700px) {
+  :root { --maxw: 84vw; --t-hero: clamp(56px, 6.2vw, 176px); }
+  .hero .panel { max-width: 46vw; }
+}
+@media (max-width: 860px), (max-width: 1180px) and (max-aspect-ratio: 4/5) {
+  /* Phones and portrait tablets: each section is a window onto the 3D scene (the band at its top) followed by its text on solid ground.
      Sections flow one after another, so there is never an empty screen between them. */
   .scrim { display: none; }
   /* at the top the menu floats over the sky so the moon's glow carries up behind it; it turns solid once the page scrolls */

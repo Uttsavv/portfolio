@@ -1,3 +1,5 @@
+// phones and portrait tablets: sections stack (scene band above, text below); keep in step with global.css
+export const STACK = '(max-width: 860px), (max-width: 1180px) and (max-aspect-ratio: 4/5)';
 // Scroll maths shared by the page text and the 3D world, so both stay in step.
 
 /** 0..1 progress through the projects showcase (the middle 60% of the pinned run). */
