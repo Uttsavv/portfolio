@@ -216,7 +216,7 @@ export async function start() {
     // phones: a larger moon set higher, so it fills the sky between the nav and the landmarks
     moon.scale.setScalar(phone ? MOON_K : 1);
     moon.position.y = phone && H >= 760 ? MOON_Y : 8.4; // short phones keep it lower, clear of the nav
-    halo.scale.setScalar(7.5 * (phone ? 1.4 : 1)); // a wide glow on phones, reaching up behind the menu
+    halo.scale.setScalar(7.5 * (phone ? MOON_K : 1)); // the original glow, sized with the moon
     halo.position.y = moon.position.y;
     applyRes();
     camera.aspect = W / H;
