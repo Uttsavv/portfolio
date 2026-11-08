@@ -53,7 +53,9 @@ export async function start() {
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
   const rim = new THREE.DirectionalLight(SKY, 2.2); // as in the mock: the blue pool on the floor is the mood
-  scene.add(key, key.target, rim, rim.target);
+  // Delhi: a soft front fill, so the faces stay readable while the moon behind casts the shadows
+  const fill = new THREE.DirectionalLight(0xdfeaff, 0);
+  scene.add(key, key.target, rim, rim.target, fill, fill.target);
 
   /* ---------- materials: the Blender material names map onto tuned three.js materials ---------- */
   const std = (color: number, roughness: number, metalness = 0.06, extra: THREE.MeshStandardMaterialParameters = {}) =>
@@ -507,6 +509,17 @@ export async function start() {
     const lx = KEYS[0].l[0] + u * (KEYS[KEYS.length - 1].l[0] - KEYS[0].l[0]);
     key.position.set(lx + 7, 12, 8);
     key.target.position.set(lx, 1.5, 0);
+    // Delhi: the light comes from the moon (high, behind), so the shadows fall forward, away from it
+    const mh = 1 - smoother(clamp01((tSmooth - 0.2) / 0.4));
+    if (mh > 0) {
+      const mx = moon.position.x * delhi.scale.x + delhi.position.x;
+      tmp.set(mx, 13, -9).sub(key.position).multiplyScalar(mh);
+      key.position.add(tmp);
+    }
+    key.intensity = 2.2 - 0.6 * mh;
+    fill.intensity = 1.1 * mh;
+    fill.position.set(lx + 4, 6, 12);
+    fill.target.position.set(lx, 1.5, 0);
     // phones: rim straight behind, so its glow pools under the model instead of a band from the left edge
     rim.position.set(phone ? lx + 1 : lx - 8, 6, -10);
     rim.target.position.set(lx, 1.5, 0);
