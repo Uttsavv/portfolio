@@ -4,7 +4,6 @@ import Icon from './Icon.astro';
 import { siGithub } from 'simple-icons';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const resume = profile.links.resume ? (/^https?:/.test(profile.links.resume) ? profile.links.resume : base + profile.links.resume) : '';
-const mailto = profile.email ? `mailto:${profile.email}` : '';
 ---
 <section class="scene" id="contact" aria-labelledby="contact-title">
   <div class="pin">
@@ -12,7 +11,7 @@ const mailto = profile.email ? `mailto:${profile.email}` : '';
       <div class="panel">
         <h2 id="contact-title" tabindex="-1">Get in touch</h2>
         <form class="form" id="cform" novalidate method="post"
-          action={profile.contactForm.endpoint || mailto || undefined}
+          action={profile.contactForm.endpoint || undefined}
           data-endpoint={profile.contactForm.endpoint || undefined}
           data-email={profile.email || undefined}>
           <div class="field">
