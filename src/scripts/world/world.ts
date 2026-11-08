@@ -189,7 +189,7 @@ export async function start() {
   ];
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
   const PHONE_FIT = [1.26, 0.62, 0.62, 0.66];
-  const HERO_Z = 0.85, HERO_W = 1.08, MOON_K = 1.35, MOON_Y = 9.6;
+  const HERO_Z = 0.85, HERO_W = 1.08, MOON_K = 0.9, MOON_Y = 9.6;
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
   const lookCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.l)), false, 'centripetal');
   const sections = [...document.querySelectorAll<HTMLElement>('.scene')];
@@ -216,7 +216,7 @@ export async function start() {
     // phones: a larger moon set higher, so it fills the sky between the nav and the landmarks
     moon.scale.setScalar(phone ? MOON_K : 1);
     moon.position.y = phone && H >= 760 ? MOON_Y : 8.4; // short phones keep it lower, clear of the nav
-    halo.scale.setScalar(7.5 * (phone ? MOON_K * 1.1 : 1));
+    halo.scale.setScalar(7.5 * (phone ? 1.4 : 1)); // a wide glow on phones, reaching up behind the menu
     halo.position.y = moon.position.y;
     applyRes();
     camera.aspect = W / H;
