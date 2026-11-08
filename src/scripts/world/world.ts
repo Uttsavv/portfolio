@@ -378,10 +378,19 @@ export async function start() {
 
   /* ---------- grab and turn: drag the scene (mouse or finger) to look around it ---------- */
   let yawUser = 0, dragging = false, dragX = 0;
-  const grabbable = (t: EventTarget | null) => {
+  // the text panel's empty space passes through to the scene; only the words themselves and the controls keep the pointer
+  // (a heading or paragraph box runs the panel's full width, often over Qutub Minar, so test the glyphs, not the box)
+  const overWords = (el: Element, x: number, y: number) => {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    for (const b of r.getClientRects()) if (x >= b.left - 4 && x <= b.right + 4 && y >= b.top - 2 && y <= b.bottom + 2) return true;
+    return false;
+  };
+  const grabbable = (t: EventTarget | null, x: number, y: number) => {
     const el = t as HTMLElement | null;
-    // the text panel's empty space passes through to the scene; only its words and controls keep the pointer
-    return !!el && !!el.closest?.('.pin') && !el.closest('a, button, input, textarea, label, form, .nav, h1, h2, h3, p, li, dt, dd');
+    if (!el || !el.closest?.('.pin') || el.closest('a, button, input, textarea, label, form, .nav')) return false;
+    const text = el.closest('h1, h2, h3, p, li, dt, dd');
+    return !text || !overWords(text, x, y);
   };
   // a tap (short press, no movement) on a Delhi piece knocks it flat; it springs back up on its own
   let downX = 0, downY = 0, downT = 0, travel = 0;
@@ -400,7 +409,7 @@ export async function start() {
     if (p && (p.ph === 0 || p.ph === 3)) { p.ph = 1; p.om = Math.max(p.om, 0) + 2.6; dirty = true; } // a push to start it tipping
   };
   addEventListener('pointerdown', (e) => {
-    if (!grabbable(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (!grabbable(e.target, e.clientX, e.clientY) || (e.pointerType === 'mouse' && e.button !== 0)) return;
     downX = e.clientX; downY = e.clientY; downT = performance.now(); travel = 0;
     dragging = true; dragX = e.clientX;
     document.documentElement.classList.add('grabbing');
