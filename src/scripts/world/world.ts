@@ -414,6 +414,13 @@ export async function start() {
     dragging = true; dragX = e.clientX;
     document.documentElement.classList.add('grabbing');
   });
+  // show the grab hand wherever a press would reach the scene, including the empty part of the text panel
+  let overScene = false;
+  addEventListener('pointermove', (e) => {
+    if (dragging || e.pointerType !== 'mouse') return;
+    const o = grabbable(e.target, e.clientX, e.clientY);
+    if (o !== overScene) { overScene = o; document.documentElement.classList.toggle('scene-hover', o); }
+  }, { passive: true });
   addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - dragX;
