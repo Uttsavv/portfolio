@@ -109,7 +109,7 @@ export async function start() {
 
   /* ---------- scene 0: Delhi (pop-up pieces stand up on load) ---------- */
   const delhiRoot = await load('delhi');
-  const pops: { pivot: THREE.Group; hinge: THREE.Group; axis: THREE.Vector3; spins: boolean; delay: number; base: THREE.Vector3; hit: number; th: number; om: number; ph: number }[] = [];
+  const pops: { pivot: THREE.Group; hinge: THREE.Group; axis: THREE.Vector3; spins: boolean; delay: number; base: THREE.Vector3; hit: number; th: number; om: number; ph: number; yaw0: number; drives: boolean }[] = [];
   // hinge: a group sitting on the ground at the piece's bottom back edge, the only thing a tap rotates; th/om: how far it has toppled (rad) and how fast;
   // ph: 0 standing, 1 falling, 2 lying flat, 3 springing back; hit: when it landed flat (s)
   const delhi = new THREE.Group();
@@ -163,7 +163,9 @@ export async function start() {
     delhi.add(pivot);
     const n = child.name;
     const delay = n === 'jamaMasjid' ? 0 : n === 'qutub' ? 0.1 : n === 'indiaGate' ? 0.25 : 0.02 * Number(n.replace(/\D/g, '') || 0);
-    pops.push({ pivot, hinge, axis, spins, delay, base: pivot.position.clone(), hit: -1, th: 0, om: 0, ph: 0 });
+    // the auto's nose points along its own +z (Blender -y); its heading on the ground is that, turned by its yaw
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    pops.push({ pivot, hinge, axis, spins, delay, base: pivot.position.clone(), hit: -1, th: 0, om: 0, ph: 0, yaw0: Math.atan2(fwd.x, fwd.z), drives: n === 'auto' });
   });
   // the one glow: a bright sky-blue moon with a soft halo
   const moonMat = glowMat.clone(); moonMat.fog = false; // the moon stays bright through the night haze
@@ -193,6 +195,10 @@ export async function start() {
   // how much each scene needs to pull back on a phone for a given free band (bigger = further away)
   const PH_FOG = [1.0, 1.75]; // phone hero fog, as multiples of the camera's distance to Delhi
   const FIT_W = 1.1; // desktop: how wide the Delhi row is, relative to the free space (bigger = smaller row)
+  // the auto's lap, as ground offsets (x, z) from where it parks; it leaves along its nose and comes back in from behind it
+  const DRIVE_S = 6.5;
+  const DRIVE_PATH: [number, number][] = [[0, 0], [-0.55, 0.95], [0.5, 2.0], [3.4, 2.4], [6.0, 2.05], [6.9, 1.1], [5.9, 0.35], [3.4, 0.6], [1.5, -0.15], [0.55, -0.95], [0.0, 0.0]];
+  let driveCurve: THREE.CatmullRomCurve3 | null = null, driveFor: unknown = null, spreadNow = 1.3;
   const PHONE_FIT = [1.26, 0.62, 0.62, 0.66];
   const HERO_Z = 0.85, HERO_W = 1.08, MOON_K = 0.9, MOON_Y = 9.6;
   const camCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => new THREE.Vector3(...k.p)), false, 'centripetal');
@@ -216,7 +222,8 @@ export async function start() {
     H = innerHeight;
     phone = matchMedia(STACK).matches;
     // wide screens have room: the Delhi landmarks stand further apart
-    const spread = phone ? 1.3 : 1.3;
+    const spread = 1.3;
+    spreadNow = spread;
     for (const p of pops) p.pivot.position.set(p.base.x * spread, p.base.y, p.base.z * spread);
     // phones: a larger moon set higher, so it fills the sky between the nav and the landmarks
     moon.scale.setScalar(phone ? MOON_K : 1);
@@ -405,6 +412,7 @@ export async function start() {
     let o: THREE.Object3D | null = hit.object;
     while (o && o.parent !== delhi) o = o.parent;
     const p = pops.find((q) => q.pivot === o);
+    if (p && p.drives) { if (p.ph === 0) { p.ph = 6; p.hit = performance.now() / 1000; dirty = true; } return; } // the auto takes a spin round Delhi instead
     if (p && p.spins) { if (p.ph === 0) { p.ph = 4; p.th = 0; p.om = 7; dirty = true; } return; } // the lotus spins a full turn instead
     if (p && (p.ph === 0 || p.ph === 3)) { p.ph = 1; p.om = Math.max(p.om, 0) + 2.6; dirty = true; } // a push to start it tipping
   };
@@ -568,7 +576,22 @@ export async function start() {
       //  flat: lands with a small bounce and lies there a beat
       //  back up: a stiff spring pulls it upright (θ'' = -kθ - cθ'); it can't tip forward through its own base,
       //  so it hits upright, bounces back a little, and settles in a few smaller bounces
-      if (p.ph !== 0) {
+      if (p.ph === 6) {
+        // a lap round Delhi: off along its nose, round in front of the gate and the lotus, a U-turn by the cart,
+        // back along the front, and in from behind to park exactly where it stood, facing the same way
+        const rest = new THREE.Vector3(p.base.x * spreadNow, p.base.y, p.base.z * spreadNow);
+        const k = clamp01((nowS - p.hit) / DRIVE_S);
+        const e = k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k); // pulls away, cruises, eases in to park
+        if (!driveCurve || driveFor !== p) {
+          driveFor = p;
+          driveCurve = new THREE.CatmullRomCurve3(DRIVE_PATH.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+        }
+        const at = driveCurve.getPointAt(e), tg = driveCurve.getTangentAt(Math.min(0.999, Math.max(0.001, e)));
+        p.pivot.position.set(rest.x + at.x, rest.y + Math.abs(Math.sin(k * 90)) * 0.025 * Math.sin(k * Math.PI), rest.z + at.z);
+        let dy = Math.atan2(tg.x, tg.z) - p.yaw0; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+          p.pivot.rotation.y = k >= 1 ? 0 : dy * Math.min(1, k / 0.06, (1 - k) / 0.06);
+        if (k >= 1) { p.ph = 0; p.pivot.position.copy(rest); p.pivot.rotation.y = 0; }
+      } else if (p.ph !== 0) {
         const FLAT = (Math.PI / 2) * 0.94, G = 26, K = 70, C = 2 * 0.2 * Math.sqrt(K);
         for (let n = Math.max(1, Math.round(dt * 240)), h = dt / n; n > 0; n--) {
           if (p.ph === 4) {
