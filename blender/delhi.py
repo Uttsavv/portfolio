@@ -107,7 +107,8 @@ def india_gate():
     body = box("ig_body", (W, D, Hb - 0.2), (0, 0, 0.2 + (Hb - 0.2) / 2), clay)
     # archivolts (raised arch rings) front and back, impost bands and pilasters are joined before cutting
     adds = []
-    ring_out = arch_points(1.42, 1.7, 0, 24)
+    # the ring starts on top of the plinth: running down to the ground, its legs ended flush with the bottom step and z-fought with it
+    ring_out = arch_points(1.42, 1.7, 0, 24, base=0.21)
     adds.append(prism("ig_archivolt", ring_out, -D / 2 - 0.035, D / 2 + 0.035, clay2))
     for side in (-1, 1):
         x = side * (W / 2 - 0.16)
