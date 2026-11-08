@@ -50,8 +50,8 @@ export async function start() {
   key.shadow.radius = 3;
   key.shadow.mapSize.set(2048, 2048); // cached, so a sharp map costs little
   Object.assign(key.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: 1, far: 60 });
-  key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.02;
+  key.shadow.bias = -0.0008; // with the light now behind and above (the moon), surfaces facing the camera sit near grazing: a firmer bias keeps them free of shadow acne
+  key.shadow.normalBias = 0.035;
   const rim = new THREE.DirectionalLight(SKY, 2.2); // as in the mock: the blue pool on the floor is the mood
   // Delhi: a soft front fill, so the faces stay readable while the moon behind casts the shadows
   const fill = new THREE.DirectionalLight(0xdfeaff, 0);
