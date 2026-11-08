@@ -126,7 +126,7 @@ def india_gate():
     # recessed panels on the piers (front and back)
     for side in (-1, 1):
         for fy in (-1, 1):
-            p = box("ig_rec", (0.42, 0.06, 0.95), (side * 1.07, fy * D / 2, 2.35), None)
+            p = box("ig_rec", (0.42, 0.03, 0.95), (side * 1.07, fy * D / 2, 2.35), None)  # shallow: deep slots shimmer with self-shadow when the gate lies flat
             boolean(body, p)
     bevel_mod(body, 0.035, 3)
     parts.append(body)
